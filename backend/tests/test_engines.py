@@ -33,7 +33,14 @@ def test_bocpd():
     data = np.concatenate([np.random.normal(0, 0.1, 50), np.random.normal(5, 0.1, 50)])
     cps = bocpd.run(data)
     assert len(cps) == 100
-    assert np.max(cps) > 0.001
+    # The windowed changepoint statistic must clearly separate the stable
+    # baseline from the true shift at index 50 — not just be nonzero
+    # everywhere (R[0] alone is constant == hazard regardless of the data,
+    # so a bare "> 0" check would pass even for a broken detector).
+    baseline = cps[10:45]
+    around_shift = cps[50:56]
+    assert np.mean(around_shift) > np.mean(baseline) * 5
+    assert np.max(around_shift) > 0.5
 
 
 def test_forecast_hazard():

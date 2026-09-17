@@ -1,7 +1,7 @@
 import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { getEarthTextures } from './textures';
+import { getRealEarthTextures } from './textures';
 
 const EARTH_VERT = /* glsl */ `
   varying vec3 vNormal;
@@ -16,8 +16,8 @@ const EARTH_VERT = /* glsl */ `
 `;
 
 const EARTH_FRAG = /* glsl */ `
-  uniform sampler2D uLand;
-  uniform sampler2D uLights;
+  uniform sampler2D uDay;
+  uniform sampler2D uNight;
   uniform vec3 uSunPos;
   varying vec3 vNormal;
   varying vec2 vUv;
@@ -26,25 +26,34 @@ const EARTH_FRAG = /* glsl */ `
   void main() {
     vec3 N = normalize(vNormal);
     vec3 L = normalize(uSunPos - vWorld);
-    float land = texture2D(uLand, vUv).r;
-
-    vec3 ocean = vec3(0.02, 0.09, 0.24);
-    vec3 landC = vec3(0.14, 0.38, 0.25);
-    vec3 base = mix(ocean, landC, land);
+    vec3 dayCol = texture2D(uDay, vUv).rgb;
+    vec3 nightCol = texture2D(uNight, vUv).rgb;
 
     float day = max(dot(N, L), 0.0);
-    vec3 lit = base * (0.28 + 1.35 * day);
+    vec3 lit = dayCol * (0.12 + 1.25 * day);
 
-    float night = smoothstep(0.14, -0.3, dot(N, L));
-    float lights = texture2D(uLights, vUv).r;
-    vec3 city = vec3(1.0, 0.85, 0.42) * pow(lights, 1.4) * night * 2.1;
+    float night = smoothstep(0.12, -0.28, dot(N, L));
+    vec3 city = pow(nightCol, vec3(1.4)) * 1.1 * night;
 
-    vec3 V = vec3(0.0, 0.0, 1.0);
-    float fr = pow(1.0 - max(dot(N, V), 0.0), 2.2);
-    vec3 atmo = vec3(0.24, 0.62, 1.0) * day * 0.55 * fr;
-
-    vec3 col = lit + city + atmo;
+    vec3 col = lit + city;
     gl_FragColor = vec4(col, 1.0);
+  }
+`;
+
+const CLOUDS_FRAG = /* glsl */ `
+  uniform sampler2D uClouds;
+  uniform vec3 uSunPos;
+  varying vec3 vNormal;
+  varying vec2 vUv;
+  varying vec3 vWorld;
+
+  void main() {
+    vec3 N = normalize(vNormal);
+    vec3 L = normalize(uSunPos - vWorld);
+    float day = max(dot(N, L), 0.0);
+    float c = texture2D(uClouds, vUv).r;
+    float alpha = c * (0.5 + 0.5 * day);
+    gl_FragColor = vec4(vec3(0.92), alpha * 0.55);
   }
 `;
 
@@ -59,10 +68,16 @@ const SHELL_VERT = /* glsl */ `
 const SHELL_FRAG = /* glsl */ `
   varying vec3 vNormal;
   void main() {
-    float intensity = pow(0.62 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 2.0);
-    gl_FragColor = vec4(0.22, 0.58, 1.0, 1.0) * intensity;
+    // Proper rim/fresnel term, clamped so it can never invert into a
+    // bright spot near the poles — 0 at the disk centre and the far
+    // side, peaking only at the grazing silhouette edge.
+    float ndotv = dot(normalize(vNormal), vec3(0.0, 0.0, 1.0));
+    float rim = pow(clamp(1.0 - abs(ndotv), 0.0, 1.0), 3.0);
+    gl_FragColor = vec4(0.22, 0.58, 1.0, 1.0) * rim * 0.9;
   }
 `;
+
+const SUN_POS = new THREE.Vector3(-6.2, -0.8, 1.2);
 
 interface EarthProps {
   position?: [number, number, number];
@@ -70,16 +85,19 @@ interface EarthProps {
 }
 
 /**
- * Rotating Earth: procedural land mask, emissive night-side city lights,
- * day/night terminator facing the Sun, and an additive atmosphere shell.
+ * Rotating Earth: real photographic day/night/cloud textures (public
+ * domain-derived, CC BY 4.0), night-side city lights, day/night terminator
+ * facing the Sun, a drifting cloud layer, and an additive atmosphere shell.
  */
 export default function Earth({ position = [4.9, -2.4, 0.2], scale = 1.25 }: EarthProps) {
   const mesh = useRef<THREE.Mesh>(null);
-  const { land, lights } = useMemo(() => getEarthTextures(), []);
+  const clouds = useRef<THREE.Mesh>(null);
+  const { day, night, clouds: cloudsTex } = useMemo(() => getRealEarthTextures(), []);
   const geometry = useMemo(() => new THREE.SphereGeometry(1, 96, 96), []);
 
   useFrame((_, delta) => {
     if (mesh.current) mesh.current.rotation.y += delta * 0.07;
+    if (clouds.current) clouds.current.rotation.y += delta * 0.084;
   });
 
   return (
@@ -89,10 +107,23 @@ export default function Earth({ position = [4.9, -2.4, 0.2], scale = 1.25 }: Ear
           vertexShader={EARTH_VERT}
           fragmentShader={EARTH_FRAG}
           uniforms={{
-            uLand: { value: land },
-            uLights: { value: lights },
-            uSunPos: { value: new THREE.Vector3(-6.2, -0.8, 1.2) },
+            uDay: { value: day },
+            uNight: { value: night },
+            uSunPos: { value: SUN_POS },
           }}
+          toneMapped={false}
+        />
+      </mesh>
+      <mesh ref={clouds} geometry={geometry} scale={1.012}>
+        <shaderMaterial
+          vertexShader={EARTH_VERT}
+          fragmentShader={CLOUDS_FRAG}
+          uniforms={{
+            uClouds: { value: cloudsTex },
+            uSunPos: { value: SUN_POS },
+          }}
+          transparent
+          depthWrite={false}
           toneMapped={false}
         />
       </mesh>

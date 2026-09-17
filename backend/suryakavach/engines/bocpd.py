@@ -5,11 +5,24 @@ from numpy.typing import NDArray
 
 
 class BOCPD:
-    """Gaussian-unknown-mean/variance BOCPD (Adams & MacKay 2007), truncated run length."""
+    """Gaussian-unknown-mean/variance BOCPD (Adams & MacKay 2007), truncated run length.
 
-    def __init__(self, hazard: float = 0.004, max_run: int = 500):
+    The exposed changepoint probability is P(run length <= cp_window), i.e. the
+    posterior mass that a change occurred within the last ``cp_window`` samples.
+    R[0] alone ("a change happened at exactly this instant") is *not* used as the
+    signal: with a constant hazard H (no run-length dependence), R[0] always
+    normalizes to exactly H regardless of the data (cp = H * sum(R*pred), the
+    growth mass is (1-H) * sum(R*pred), so cp / (cp + growth) == H identically) —
+    it carries no information about the observed series. Summing over a small
+    window of run lengths keeps the same Bayesian machinery but yields a
+    genuinely data-driven signal that spikes when the run-length posterior
+    concentrates near small r after a real shift.
+    """
+
+    def __init__(self, hazard: float = 0.004, max_run: int = 500, cp_window: int = 6):
         self.hazard = hazard
         self.max_run = max_run
+        self.cp_window = cp_window
         self.mu0 = 0.0
         self.kappa0 = 1.0
         self.alpha0 = 1.0
@@ -56,7 +69,8 @@ class BOCPD:
         self.alpha = new_alpha
         self.beta = new_beta
         self.t += 1
-        self.last_cp = float(self.R[0])
+        window = min(self.cp_window + 1, self.R.size)
+        self.last_cp = float(np.sum(self.R[:window]))
         return self.last_cp
 
     def run(self, xs: NDArray[np.float64]) -> NDArray[np.float64]:

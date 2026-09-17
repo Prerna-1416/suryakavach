@@ -100,7 +100,7 @@ class Runtime:
         if self.booted:
             return
         try:
-            self.days = build_all_days(int(self.cfg["data"]["seed"]))
+            self.days = self._build_preferred_days()
             self._fit_forecast()
             self._run_all_nowcasts()
             self._persist_flares()

@@ -71,9 +71,14 @@ export default function SolarWind({
     const arr = geometry.attributes.position.array as Float32Array;
     for (let i = 0; i < count; i++) {
       const p = particles[i];
-      const k = (p.o + t * p.spd) % 1;
+      const cycle = (p.o + t * p.spd) % 1;
+      // Stop just short of both endpoints — a full sweep to k=0/1 lets
+      // every particle's jitter collapse to the same point on the Sun's
+      // limb / Earth's surface, stacking additive blending into a
+      // blown-out "star" artifact instead of a soft stream.
+      const k = 0.04 + 0.92 * cycle;
       pointAt(k, TMP);
-      const w = Math.sin(k * Math.PI);
+      const w = 0.22 + 0.78 * Math.sin(k * Math.PI);
       arr[i * 3] = TMP.x + p.jx * w * p.amp;
       arr[i * 3 + 1] = TMP.y + p.jy * w * p.amp;
       arr[i * 3 + 2] = TMP.z + p.jz * w * p.amp;

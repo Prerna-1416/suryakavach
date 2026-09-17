@@ -932,15 +932,15 @@
 }
 .sk-callout--sun {
   left: 8%;
-  top: 34%;
+  top: 13%;
 }
 .sk-callout--wind {
-  left: 36%;
-  top: 20%;
+  left: 57%;
+  top: 64%;
 }
 .sk-callout--earth {
-  right: 12%;
-  top: 38%;
+  right: 9%;
+  top: 44%;
 }
 .sk-callout .sk-callout-line {
   display: block;

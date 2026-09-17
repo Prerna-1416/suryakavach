@@ -35,9 +35,9 @@ export default function SolarScene({ mx, my, reduced = false, inside }: SolarSce
 
       {!reduced && (
         <EffectComposer>
-          {/* Restrained bloom so the corona + surface read instead of the
-              whole disk blowing out into a white blob. */}
-          <Bloom intensity={0.8} luminanceThreshold={0.72} luminanceSmoothing={0.35} mipmapBlur radius={0.7} />
+          {/* Restrained bloom so the photographic surface detail still
+              reads through the corona glow instead of washing out flat. */}
+          <Bloom intensity={0.6} luminanceThreshold={0.78} luminanceSmoothing={0.3} mipmapBlur radius={0.6} />
           <Vignette eskil={false} offset={0.24} darkness={0.72} />
         </EffectComposer>
       )}

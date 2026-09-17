@@ -1,0 +1,12 @@
+{
+  "name": "suryakavach-workspace",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Suryakavach — SoLEXS/HEL1OS aditya-L1 flare nowcast, forecast and impact operator console + WebGL sun-moon hero.",
+  "scripts": {
+    "dev": "node scripts/dev.mjs all",
+    "dev:api": "node scripts/dev.mjs api",
+    "dev:web": "node scripts/dev.mjs web"
+  }
+}

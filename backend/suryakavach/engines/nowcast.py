@@ -58,7 +58,11 @@ def run_nowcast(
     bocpd_cfg = cfg["bocpd"]
     neu_cfg = cfg["neupert"]
     baseline_thr = float(cfg["baseline"]["sxr_onset"])
-    det = BOCPD(hazard=float(bocpd_cfg["hazard"]), max_run=int(bocpd_cfg["max_run"]))
+    det = BOCPD(
+        hazard=float(bocpd_cfg["hazard"]),
+        max_run=int(bocpd_cfg["max_run"]),
+        cp_window=int(bocpd_cfg.get("cp_window", 6)),
+    )
     log_s = np.log10(np.clip(sxr, 1e-12, None))
     posterior = det.run(log_s)
 
