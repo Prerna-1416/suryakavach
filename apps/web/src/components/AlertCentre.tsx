@@ -3,11 +3,11 @@ import type { Alert } from '../types/api';
 import Panel from './ui/Panel';
 
 const SEVERITY_COLORS: Record<string, string> = {
-  R1: '#0284c7',
-  R2: '#d97706',
-  R3: '#ea580c',
-  R4: '#dc2626',
-  R5: '#991b1b',
+  R1: '#38bdf8',
+  R2: '#fbbf24',
+  R3: '#fb923c',
+  R4: '#f87171',
+  R5: '#ef4444',
 };
 
 export default function AlertCentre() {
@@ -15,7 +15,7 @@ export default function AlertCentre() {
   const alerts: Alert[] = data ?? [];
 
   return (
-    <Panel label="Alert Centre" meta={<span>{alerts.length} alerts</span>} tone="#dc2626">
+    <Panel label="Alert Centre" meta={<span>{alerts.length} alerts</span>} tone="#f87171">
       {isLoading ? (
         <div className="text-center text-ink-faint py-8 text-xs font-mono-val">Loading alerts…</div>
       ) : alerts.length === 0 ? (

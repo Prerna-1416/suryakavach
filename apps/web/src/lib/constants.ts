@@ -1,11 +1,12 @@
 // GOES flare classification thresholds (W/m²) for 1-8 Å soft X-ray band
 // A < 1e-7, B = 1e-7→1e-6, C = 1e-6→1e-5, M = 1e-5→1e-4, X ≥ 1e-4
+// `bg` is a translucent dark-scene wash of the class colour.
 export const GOES_CLASSES = [
-  { label: 'A', threshold: 0, color: '#16a34a', bg: '#f0fdf4' },
-  { label: 'B', threshold: 1e-7, color: '#0284c7', bg: '#f0f9ff' },
-  { label: 'C', threshold: 1e-6, color: '#d97706', bg: '#fffbeb' },
-  { label: 'M', threshold: 1e-5, color: '#ea580c', bg: '#fff7ed' },
-  { label: 'X', threshold: 1e-4, color: '#dc2626', bg: '#fef2f2' },
+  { label: 'A', threshold: 0, color: '#16a34a', bg: 'rgba(22, 163, 74, 0.12)' },
+  { label: 'B', threshold: 1e-7, color: '#0284c7', bg: 'rgba(2, 132, 199, 0.14)' },
+  { label: 'C', threshold: 1e-6, color: '#d97706', bg: 'rgba(217, 119, 6, 0.14)' },
+  { label: 'M', threshold: 1e-5, color: '#ea580c', bg: 'rgba(234, 88, 12, 0.16)' },
+  { label: 'X', threshold: 1e-4, color: '#dc2626', bg: 'rgba(220, 38, 38, 0.18)' },
 ] as const;
 
 export function goesClass(flux: number): string {
@@ -87,19 +88,20 @@ export function riskColor(p: number): string {
 }
 
 // Instrument series colours — single source for every Plotly trace and
-// legend. Darkened from the Tailwind palette so they hold up on warm white.
+// legend. Brightened so they hold up on the dark space surface.
 export const SERIES_COLORS = {
-  sxr: '#0e7490',       // SoLEXS soft X-ray
-  hxr: '#c2410c',       // HEL1OS hard X-ray
-  posterior: '#6d28d9', // BOCPD P(CP)
+  sxr: '#38bdf8',       // SoLEXS soft X-ray — sky
+  hxr: '#fb923c',       // HEL1OS hard X-ray — amber
+  posterior: '#a78bfa', // BOCPD P(CP) — violet
 } as const;
 
 // Chart chrome neutrals, matched to the token palette in index.css.
 export const CHART_COLORS = {
-  grid: '#ecebe7',
-  zeroline: '#d8d6d1',
-  plotBg: '#faf9f7',
-  gapBand: '#e7e5e0',
+  grid: '#1c2434',
+  zeroline: '#2c3850',
+  plotBg: '#0a0f1c',
+  gapBand: '#141b2a',
+  tick: '#93a0b6',
 } as const;
 
 /**
@@ -124,11 +126,11 @@ export const METRICS = {
 
 // Nowcast state labels and colors
 export const NOWCAST_STATES = {
-  quiet: { label: 'Quiet', color: '#16a34a', bg: '#f0fdf4' },
-  onset: { label: 'Onset', color: '#d97706', bg: '#fffbeb' },
-  rising: { label: 'Rising', color: '#ea580c', bg: '#fff7ed' },
-  peak: { label: 'Peak', color: '#dc2626', bg: '#fef2f2' },
-  decay: { label: 'Decay', color: '#0284c7', bg: '#f0f9ff' },
+  quiet: { label: 'Quiet', color: '#16a34a', bg: 'rgba(22, 163, 74, 0.12)' },
+  onset: { label: 'Onset', color: '#d97706', bg: 'rgba(217, 119, 6, 0.14)' },
+  rising: { label: 'Rising', color: '#ea580c', bg: 'rgba(234, 88, 12, 0.16)' },
+  peak: { label: 'Peak', color: '#dc2626', bg: 'rgba(220, 38, 38, 0.18)' },
+  decay: { label: 'Decay', color: '#0284c7', bg: 'rgba(2, 132, 199, 0.14)' },
 } as const;
 
 export type NowcastStateKey = keyof typeof NOWCAST_STATES;

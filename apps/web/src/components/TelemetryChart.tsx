@@ -63,7 +63,7 @@ export default function TelemetryChart({ streams, windowSize, onWindowChange }: 
       margin: { l: 56, r: 76, t: 16, b: 36 },
       paper_bgcolor: 'rgba(0,0,0,0)',
       plot_bgcolor: CHART_COLORS.plotBg,
-      font: { family: 'JetBrains Mono, monospace', size: 10, color: '#5c6066' },
+      font: { family: 'JetBrains Mono, monospace', size: 10, color: CHART_COLORS.tick },
       xaxis: {
         gridcolor: CHART_COLORS.grid,
         zerolinecolor: CHART_COLORS.zeroline,
@@ -102,7 +102,7 @@ export default function TelemetryChart({ streams, windowSize, onWindowChange }: 
         showgrid: false,
       },
       showlegend: true,
-      legend: { orientation: 'h', y: 1.12, font: { size: 10, color: '#5c6066' } },
+      legend: { orientation: 'h', y: 1.12, font: { size: 10, color: CHART_COLORS.tick } },
       shapes: [
         // Data gaps: grey bands behind the traces.
         ...gaps.map((gap) => ({
@@ -139,7 +139,7 @@ export default function TelemetryChart({ streams, windowSize, onWindowChange }: 
           y0: cls.threshold,
           y1: cls.threshold,
           yref: 'y',
-          line: { color: cls.color, width: 1, dash: 'dot' },
+          line: { color: `${cls.color}99`, width: 1, dash: 'dot' },
         })),
       ],
     }),
@@ -176,7 +176,7 @@ export default function TelemetryChart({ streams, windowSize, onWindowChange }: 
       name: 'SoLEXS SXR',
       line: { color: SERIES_COLORS.sxr, width: 1.8 },
       fill: 'tozeroy',
-      fillcolor: 'rgba(14, 116, 144, 0.07)',
+      fillcolor: 'rgba(56, 189, 248, 0.09)',
       yaxis: 'y',
     },
     {

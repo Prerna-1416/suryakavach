@@ -148,7 +148,7 @@ export default function ImpactGauge({ impact }: ImpactGaugeProps) {
                       style={{
                         color: alarm ? 'var(--color-alarm)' : 'var(--color-ok)',
                         borderColor: alarm ? 'var(--color-alarm)' : 'var(--color-ok)',
-                        backgroundColor: alarm ? '#fef2f2' : '#f0fdf4',
+                        backgroundColor: alarm ? 'rgba(239,122,90,0.12)' : 'rgba(52,211,153,0.10)',
                       }}
                     >
                       {risk}

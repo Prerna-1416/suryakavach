@@ -31,9 +31,9 @@ function CohortRow({ cohort, targetTss }: { cohort: Cohort; targetTss: number })
       </td>
       <td className="px-3 py-2 text-right text-[11px] font-semibold">
         {meetsTarget ? (
-          <span className="text-ok px-1.5 py-0.5 border border-ok bg-[#f0fdf4]">MEETS ≥ {targetTss}</span>
+          <span className="text-ok px-1.5 py-0.5 border border-ok bg-ok/10">MEETS ≥ {targetTss}</span>
         ) : (
-          <span className="text-alarm px-1.5 py-0.5 border border-alarm bg-[#fef2f2]">BELOW ≥ {targetTss}</span>
+          <span className="text-alarm px-1.5 py-0.5 border border-alarm bg-alarm/10">BELOW ≥ {targetTss}</span>
         )}
       </td>
     </tr>

@@ -67,7 +67,7 @@ function FlareDetailPane({ flare, minClass }: { flare: FlareDetail; minClass: st
               margin: { l: 56, r: 76, t: 16, b: 36 },
               paper_bgcolor: 'rgba(0,0,0,0)',
               plot_bgcolor: CHART_COLORS.plotBg,
-              font: { family: 'JetBrains Mono, monospace', size: 10, color: '#5c6066' },
+              font: { family: 'JetBrains Mono, monospace', size: 10, color: CHART_COLORS.tick },
               xaxis: { gridcolor: CHART_COLORS.grid },
               yaxis: { type: 'log', range: [-8, -3], title: { text: 'SXR W/m²', font: { color: SERIES_COLORS.sxr } }, tickfont: { color: SERIES_COLORS.sxr }, gridcolor: CHART_COLORS.grid },
               yaxis2: { type: 'log', range: [-10, -4], title: { text: 'HXR W/m²', font: { color: SERIES_COLORS.hxr } }, tickfont: { color: SERIES_COLORS.hxr }, overlaying: 'y', side: 'right', showgrid: false },
@@ -143,7 +143,7 @@ export default function FlareCatalogue() {
   return (
     <Panel
       label="Flare Catalogue"
-      tone="#b45309"
+      tone="#e6a94c"
       meta={<span>{total} events · synthetic cache</span>}
     >
       <div className="flex flex-wrap items-center justify-between gap-2 mb-3">

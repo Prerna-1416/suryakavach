@@ -63,7 +63,7 @@ export default function ForecastCards({ forecast }: ForecastCardsProps) {
   const horizons = forecast?.horizons ?? [];
 
   return (
-    <Panel label="Flare Hazard Forecast" meta={<span>logistic hazard + EVT</span>} tone="#6d28d9">
+    <Panel label="Flare Hazard Forecast — 5/10/20/40 min" meta={<span>logistic hazard + EVT</span>} tone="#a78bfa">
       {horizons.length === 0 ? (
         <p className="text-xs font-mono-val text-ink-faint py-6 text-center">No forecast horizons available.</p>
       ) : (

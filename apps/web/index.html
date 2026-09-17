@@ -2,17 +2,18 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <!-- Simple ray mark: concentric disc + flare arc, single accent colour -->
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2315171a'/%3E%3Ccircle cx='16' cy='16' r='5' fill='%23b45309'/%3E%3Cpath d='M16 4a12 12 0 0 1 12 12' fill='none' stroke='%23b45309' stroke-width='2'/%3E%3Cpath d='M16 8a8 8 0 0 1 8 8' fill='none' stroke='%23b45309' stroke-width='1.5' opacity='0.6'/%3E%3C/svg%3E" />
+    <!-- Golden ray mark on deep space -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2304060c'/%3E%3Ccircle cx='16' cy='16' r='6' fill='%23e6a94c'/%3E%3Ccircle cx='16' cy='16' r='6' fill='url(%23h)'/%3E%3Cdefs%3E%3CradialGradient id='h' cx='0.35' cy='0.32'%3E%3Cstop offset='0%25' stop-color='%23fff4d6' stop-opacity='0.95'/%3E%3Cstop offset='100%25' stop-color='%23e6a94c' stop-opacity='0.2'/%3E%3C/radialGradient%3E%3C/defs%3E%3Cpath d='M16 3a13 13 0 0 1 12.9 11.9' fill='none' stroke='%23e6a94c' stroke-width='2'/%3E%3Cpath d='M16 8a8 8 0 0 1 8 8' fill='none' stroke='%23f6cd8b' stroke-width='1.5' opacity='0.6'/%3E%3C/svg%3E" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="color-scheme" content="light" />
-    <meta name="theme-color" content="#fbfbfa" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#04060c" />
+    <meta name="description" content="SURYAKAVACH — Indian space-weather intelligence. Real-time solar flare nowcasting from the Aditya-L1 SoLEXS and HEL1OS payload streams." />
     <title>SURYAKAVACH — Solar Flare Nowcast & Radiation Impact System</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   </head>
-  <body class="bg-surface text-ink antialiased">
+  <body class="bg-space text-ink antialiased">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

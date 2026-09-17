@@ -4,21 +4,44 @@ import { create } from 'zustand';
  * URL routing. Screens, the catalogue class filter, and the selected flare id
  * all live in the URL so every view is deep-linkable and back/forward work:
  *
- *   /                        monitor
- *   /replay                  replay
+ *   /                        home (cinematic landing)
+ *   /live                    live telemetry console
+ *   /forecast                multi-horizon forecast
+ *   /impact                  impact index & alerts
+ *   /replay                  historical flare replay
  *   /catalogue               catalogue, all classes
  *   /catalogue?class=M       catalogue, M+ filter
  *   /catalogue/FLR-001       catalogue, detail pane for one flare
- *   /alerts  /methodology
+ *   /alerts  /about          alert centre / about
+ *
+ * Historic aliases keep old deep links alive: /monitor → live,
+ * /methodology → about.
  *
  * State lives in a zustand store rather than React state so any component
- * (rail nav, catalogue rows) can navigate without prop-drilling. The
+ * (nav bar, catalogue rows) can navigate without prop-drilling. The
  * popstate listener is installed once at module load.
  */
 
-export type Screen = 'monitor' | 'replay' | 'catalogue' | 'alerts' | 'methodology';
+export type Screen =
+  | 'home'
+  | 'live'
+  | 'forecast'
+  | 'impact'
+  | 'replay'
+  | 'catalogue'
+  | 'alerts'
+  | 'about';
 
-const KNOWN_SCREENS: Screen[] = ['monitor', 'replay', 'catalogue', 'alerts', 'methodology'];
+const KNOWN_SCREENS: Screen[] = [
+  'home',
+  'live',
+  'forecast',
+  'impact',
+  'replay',
+  'catalogue',
+  'alerts',
+  'about',
+];
 const KNOWN_CLASSES = ['ALL', 'X', 'M', 'C', 'B'] as const;
 
 export interface Route {
@@ -31,8 +54,14 @@ export interface Route {
 
 export function parseLocation(pathname: string, search: string): Route {
   const segments = pathname.split('/').filter(Boolean);
-  const first = segments[0] as Screen | undefined;
-  const screen = first && KNOWN_SCREENS.includes(first) ? first : 'monitor';
+  const first = segments[0] as string | undefined;
+
+  // Historic aliases: /monitor was the pre-redesign console root,
+  // /methodology is now the About page.
+  if (first === 'monitor') return { screen: 'live', flareId: null, minClass: 'ALL' };
+  if (first === 'methodology') return { screen: 'about', flareId: null, minClass: 'ALL' };
+
+  const screen: Screen = first && KNOWN_SCREENS.includes(first as Screen) ? (first as Screen) : 'home';
 
   const flareId =
     screen === 'catalogue' && segments[1] ? decodeURIComponent(segments[1]) : null;
