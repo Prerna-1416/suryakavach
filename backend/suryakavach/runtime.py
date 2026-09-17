@@ -17,6 +17,7 @@ from suryakavach.engines.forecast import DiscreteHazard, rolling_features
 from suryakavach.engines.impact import compute_impact, map_severity
 from suryakavach.engines.nowcast import FlareEvent, run_nowcast
 from suryakavach.goes import class_meets_min, goes_class, iso
+from suryakavach.ingest.pradan import load_real_day_files
 from suryakavach.ingest.synthetic import build_all_days
 
 UTC = timezone.utc
@@ -117,6 +118,24 @@ class Runtime:
         self.cursor = min(21 * 60, len(self.day()["ts"]) - 1)
         self.playing = True
         self.speed = float(self.cfg["replay"]["default_speed"])
+
+    def _build_preferred_days(self) -> dict[str, dict]:
+        days = build_all_days(int(self.cfg["data"]["seed"]))
+        real_root = self.data_path / "real_days"
+        if not real_root.is_dir():
+            return days
+
+        for src_dir in real_root.iterdir():
+            if not src_dir.is_dir():
+                continue
+            day = src_dir.name
+            try:
+                real_day = load_real_day_files(day, src_dir)
+            except (FileNotFoundError, OSError, ValueError):
+                continue
+            real_day["truth"] = []
+            days[day] = real_day
+        return days
 
     def _fit_forecast(self) -> None:
         xs = []
