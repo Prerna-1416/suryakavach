@@ -1,7 +1,8 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import NavBar from './components/NavBar';
 import Header from './components/Header';
-import OrbitMark from './components/ui/OrbitMark';
+import LandingHero from './components/LandingHero';
 import NowcastBanner from './components/NowcastBanner';
 import TelemetryChart from './components/TelemetryChart';
 import ForecastCards from './components/ForecastCards';
@@ -10,25 +11,59 @@ import FlareCatalogue from './components/FlareCatalogue';
 import ReplayBar from './components/ReplayBar';
 import MetricsPanel from './components/MetricsPanel';
 import AlertCentre from './components/AlertCentre';
-import Panel from './components/ui/Panel';
+import About from './components/About';
 import { useReplayStore } from './store/replayStore';
 import { useStreams, useNowcast, useForecast, useImpact, useHealth, useReplayDates } from './lib/hooks';
 import { WS_URL } from './lib/constants';
 import { useRouter, isModifiedClick } from './lib/router';
-import type { Screen } from './lib/router';
 import type { Clock } from './types/api';
-import { screenFade, silkPress, staggerContainer, staggerItem, usePrefersReducedMotion } from './lib/motion';
+import { screenFade, usePrefersReducedMotion } from './lib/motion';
 
-const NAV: { screen: Screen; label: string; href: string }[] = [
-  { screen: 'monitor', label: 'Monitor', href: '/' },
-  { screen: 'replay', label: 'Replay', href: '/replay' },
-  { screen: 'catalogue', label: 'Catalogue', href: '/catalogue' },
-  { screen: 'alerts', label: 'Alerts', href: '/alerts' },
-  { screen: 'methodology', label: 'Methodology', href: '/methodology' },
-];
+function PageHeading({
+  eyebrow,
+  title,
+  trail,
+}: {
+  eyebrow: string;
+  title: string;
+  trail?: { label: string; href: string }[];
+}) {
+  const { go } = useRouter();
+  return (
+    <div className="flex flex-wrap items-end justify-between gap-3 px-1">
+      <div>
+        <div className="flex items-center gap-2">
+          <span className="w-5 h-px bg-accent/60" aria-hidden="true" />
+          <span className="text-[10px] uppercase tracking-[0.3em] text-ink-faint font-mono-val">
+            {eyebrow}
+          </span>
+        </div>
+        <h1 className="mt-2 font-display text-3xl md:text-4xl leading-none text-screen-title">{title}</h1>
+      </div>
+      {trail && (
+        <div className="flex items-center gap-4 text-[10px] uppercase tracking-[0.2em]">
+          {trail.map((t) => (
+            <a
+              key={t.href}
+              href={t.href}
+              onClick={(e) => {
+                if (isModifiedClick(e)) return;
+                e.preventDefault();
+                go(t.href);
+              }}
+              className="text-ink-faint hover:text-accent-soft transition-colors"
+            >
+              {t.label} →
+            </a>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function App() {
-  const { route, go } = useRouter();
+  const { route } = useRouter();
   const reduced = usePrefersReducedMotion();
   const { setPlaying, setSpeed, setCursor, setEventDate, setDates, setMode } = useReplayStore();
 
@@ -94,165 +129,162 @@ export default function App() {
     return () => wsRef.current?.close();
   }, [connectWS]);
 
-  const handleWindowChange = (w: number) => {
-    setWindowSize(w);
-  };
+  const handleWindowChange = (w: number) => setWindowSize(w);
 
   const renderScreen = () => {
     switch (route.screen) {
-      case 'monitor':
+      case 'live':
         return (
           <motion.div
-            className="space-y-4"
-            variants={reduced ? undefined : staggerContainer}
+            className="space-y-5"
+            variants={reduced ? undefined : { hidden: {}, show: { transition: { staggerChildren: 0.06 } } }}
             initial={reduced ? undefined : 'hidden'}
             animate={reduced ? undefined : 'show'}
           >
-            <motion.div variants={reduced ? undefined : staggerItem}>
-              <NowcastBanner nowcastState={nowcastState ?? null} />
+            <motion.div variants={reduced ? undefined : { hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }}>
+              <PageHeading
+                eyebrow="Live Console"
+                title="Solar flare nowcast"
+                trail={[
+                  { label: 'Flare Catalogue', href: '/catalogue' },
+                  { label: 'Alert Centre', href: '/alerts' },
+                ]}
+              />
             </motion.div>
-            <motion.div variants={reduced ? undefined : staggerItem}>
-              <TelemetryChart streams={streams ?? null} windowSize={windowSize} onWindowChange={handleWindowChange} />
-            </motion.div>
-            <motion.div variants={reduced ? undefined : staggerItem} className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <NowcastBanner nowcastState={nowcastState ?? null} />
+            <TelemetryChart streams={streams ?? null} windowSize={windowSize} onWindowChange={handleWindowChange} />
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
               <ForecastCards forecast={forecast ?? null} />
               <ImpactGauge impact={impact ?? null} />
-            </motion.div>
+            </div>
+          </motion.div>
+        );
+      case 'forecast':
+        return (
+          <motion.div className="space-y-5" {...screenFade}>
+            <PageHeading
+              eyebrow="Forecast"
+              title="5 · 10 · 20 · 40 minute outlook"
+              trail={[
+                { label: 'Live Console', href: '/live' },
+                { label: 'Impact', href: '/impact' },
+              ]}
+            />
+            <ForecastCards forecast={forecast ?? null} />
+            <TelemetryChart streams={streams ?? null} windowSize={windowSize} onWindowChange={handleWindowChange} />
+            <MetricsPanel />
+          </motion.div>
+        );
+      case 'impact':
+        return (
+          <motion.div className="space-y-5" {...screenFade}>
+            <PageHeading
+              eyebrow="Impact"
+              title="Radiation impact index"
+              trail={[
+                { label: 'Alert Centre', href: '/alerts' },
+                { label: 'Live Console', href: '/live' },
+              ]}
+            />
+            <ImpactGauge impact={impact ?? null} />
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+              <NowcastBanner nowcastState={nowcastState ?? null} />
+              <AlertCentre />
+            </div>
+          </motion.div>
+        );
+      case 'replay':
+        return (
+          <motion.div className="space-y-5" {...screenFade}>
+            <PageHeading
+              eyebrow="Historical Replay"
+              title="Replay recorded flare days"
+              trail={[
+                { label: 'Flare Catalogue', href: '/catalogue' },
+                { label: 'About', href: '/about' },
+              ]}
+            />
+            <NowcastBanner nowcastState={nowcastState ?? null} />
+            <TelemetryChart streams={streams ?? null} windowSize={windowSize} onWindowChange={handleWindowChange} />
           </motion.div>
         );
       case 'catalogue':
-        return <FlareCatalogue />;
-      case 'replay':
         return (
-          <>
-            <NowcastBanner nowcastState={nowcastState ?? null} />
-            <TelemetryChart streams={streams ?? null} windowSize={windowSize} onWindowChange={handleWindowChange} />
-          </>
+          <motion.div className="space-y-5" {...screenFade}>
+            <PageHeading
+              eyebrow="Flare Catalogue"
+              title="Event classification"
+              trail={[
+                { label: 'Alert Centre', href: '/alerts' },
+                { label: 'Live Console', href: '/live' },
+              ]}
+            />
+            <FlareCatalogue />
+          </motion.div>
         );
       case 'alerts':
-        return <AlertCentre />;
-      case 'methodology':
         return (
-          <Panel label="Methodology">
-            <div className="text-sm text-ink-muted max-w-3xl">
-              <p className="mb-4">
-                SURYAKAVACH fuses the SoLEXS and HEL1OS payload streams from Aditya-L1 for
-                real-time solar flare nowcasting. All data shown on this console is from the
-                synthetic fused cache used for offline validation — not live Aditya-L1 telemetry.
-              </p>
-            </div>
-            <dl className="grid grid-cols-1 md:grid-cols-3 gap-px bg-rule border border-rule">
-              <div className="bg-panel p-4 border-l-2 border-l-[#6d28d9]">
-                <dt className="text-[11px] font-semibold tracking-[0.14em] uppercase text-ink-muted">BOCPD Detection</dt>
-                <dd className="text-xs text-ink-muted mt-2">
-                  Bayesian Online Change-Point Detection identifies flux onset in real time,
-                  producing the P(CP) posterior overlaid on the telemetry chart.
-                </dd>
-              </div>
-              <div className="bg-panel p-4 border-l-2 border-l-[#d97706]">
-                <dt className="text-[11px] font-semibold tracking-[0.14em] uppercase text-ink-muted">Logistic Hazard</dt>
-                <dd className="text-xs text-ink-muted mt-2">
-                  Calibrated discrete-time logistic hazard model forecasts flare probability over
-                  multiple horizons, with EVT intensity quantiles.
-                </dd>
-              </div>
-              <div className="bg-panel p-4 border-l-2 border-l-[#dc2626]">
-                <dt className="text-[11px] font-semibold tracking-[0.14em] uppercase text-ink-muted">Impact Fusion</dt>
-                <dd className="text-xs text-ink-muted mt-2">
-                  Weighted fusion of SXR peak, hardness, impulsivity, and duration into a 0–10
-                  impact index mapped onto the NOAA R-scale.
-                </dd>
-              </div>
-            </dl>
-          </Panel>
+          <motion.div className="space-y-5" {...screenFade}>
+            <PageHeading
+              eyebrow="Warning System"
+              title="Alert centre"
+              trail={[
+                { label: 'Impact', href: '/impact' },
+                { label: 'Live Console', href: '/live' },
+              ]}
+            />
+            <AlertCentre />
+            <MetricsPanel />
+          </motion.div>
+        );
+      case 'about':
+        return (
+          <motion.div className="space-y-5" {...screenFade}>
+            <PageHeading
+              eyebrow="Mission"
+              title="About SURYAKAVACH"
+              trail={[
+                { label: 'Live Console', href: '/live' },
+                { label: 'Forecast', href: '/forecast' },
+              ]}
+            />
+            <About />
+          </motion.div>
         );
       default:
         return null;
     }
   };
 
+  const isHome = route.screen === 'home';
+
   return (
-    <div className="min-h-screen bg-surface text-ink md:flex">
-      <a href="#main-content" className="skip-link">Skip to main content</a>
+    <div className="min-h-screen bg-space text-ink">
+      <NavBar wsConnected={wsConnected} mode={health?.mode ?? 'live'} theme={isHome ? 'overlay' : 'solid'} />
 
-      {/* Left rail — brand, navigation, connection state. Deep ink so the
-          console reads as an instrument; amber marks the current screen. */}
-      <aside className="bg-rail border-b md:border-b-0 border-rail-rule md:border-r md:w-[208px] md:shrink-0 md:sticky md:top-0 md:h-screen flex md:flex-col">
-        <div className="px-4 py-3 md:py-4 border-b border-rail-rule flex items-center gap-2.5">
-          <OrbitMark size={22} dark />
-          <div>
-            <div className="text-sm font-bold tracking-[0.18em] uppercase text-white">SURYAKAVACH</div>
-            <div className="text-[10px] font-mono-val text-rail-ink-faint mt-1">SIH26209 · ADITYA-L1</div>
-          </div>
-        </div>
-
-        <nav
-          className="flex md:flex-col gap-0.5 px-2 py-1.5 md:py-3 overflow-x-auto"
-          aria-label="Main navigation"
-        >
-          {NAV.map(({ screen, label, href }) => {
-            const active = route.screen === screen;
-            return (
-              <motion.a
-                key={screen}
-                href={href}
-                aria-current={active ? 'page' : undefined}
-                {...(reduced ? {} : silkPress)}
-                onClick={(e) => {
-                  if (isModifiedClick(e)) return;
-                  e.preventDefault();
-                  go(href);
-                }}
-                className={`whitespace-nowrap px-3 py-1.5 text-[13px] font-medium border-l-2 md:border-l-2 ${
-                  active
-                    ? 'text-accent bg-white/[0.06] border-accent'
-                    : 'text-rail-ink border-transparent hover:text-white hover:bg-white/[0.03]'
-                }`}
-              >
-                {label}
-              </motion.a>
-            );
-          })}
-        </nav>
-
-        <div className="hidden md:block mt-auto px-4 py-3 border-t border-rail-rule text-[10px] font-mono-val text-rail-ink-faint space-y-1">
-          <div className="flex items-center gap-2">
-            <span
-              className="inline-block w-1.5 h-1.5 rounded-full"
-              style={{ backgroundColor: wsConnected ? 'var(--color-ok)' : 'var(--color-alarm)' }}
-              aria-hidden="true"
-            />
-            <span className={wsConnected ? 'text-ok' : 'text-alarm'}>
-              WS {wsConnected ? 'CONNECTED' : 'OFFLINE'}
-            </span>
-          </div>
-          <div className="text-rail-ink">MODE {health?.mode?.toUpperCase() ?? '—'}</div>
-          <div className="pt-1 text-rail-ink-faint/70">SYNTHETIC CACHE — NOT LIVE ADITYA-L1</div>
-        </div>
-      </aside>
-
-      {/* Content column */}
-      <div className="flex-1 min-w-0 flex flex-col">
-        <Header health={health ?? null} clock={clock} wsConnected={wsConnected} />
-
-        <main id="main-content" className="flex-1 w-full max-w-[1200px] mx-auto p-4 space-y-4">
-          <AnimatePresence mode="wait" initial={false}>
-            <motion.div
-              key={route.screen}
-              className="space-y-4"
-              initial={reduced ? false : screenFade.initial}
-              animate={reduced ? undefined : screenFade.animate}
-              exit={reduced ? undefined : screenFade.exit}
-              transition={reduced ? { duration: 0 } : screenFade.transition}
-            >
-              {renderScreen()}
-              {route.screen === 'monitor' && <MetricsPanel />}
-            </motion.div>
-          </AnimatePresence>
+      {isHome ? (
+        <main id="main-content" className="min-h-screen">
+          <LandingHero />
         </main>
-
-        <ReplayBar />
-      </div>
+      ) : (
+        <div className="min-h-[100svh] flex flex-col">
+          <Header health={health ?? null} clock={clock} wsConnected={wsConnected} />
+          <main id="main-content" className="flex-1 w-full max-w-[1200px] mx-auto px-4 py-8 space-y-5">
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.div
+                key={route.screen}
+                initial={reduced ? false : screenFade.initial}
+                animate={reduced ? undefined : screenFade.animate}
+                exit={reduced ? undefined : screenFade.exit}
+                transition={reduced ? { duration: 0 } : screenFade.transition}
+              >
+                {renderScreen()}
+              </motion.div>
+            </AnimatePresence>
+          </main>
+          <ReplayBar />
+        </div>
+      )}
     </div>
   );
 }

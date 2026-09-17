@@ -15,7 +15,7 @@ function engineTone(status: string | undefined): string {
 /**
  * Status strip: one hairline-ruled row of live console state — connection,
  * engines, stream mode, and the UTC/IST clock. Tabular numerals keep the
- * clock from jittering between ticks.
+ * clock from jittering between ticks. Sticks just below the top nav bar.
  */
 export default function Header({ health, clock, wsConnected }: HeaderProps) {
   const utc = clock?.utc ?? '—';
@@ -24,12 +24,15 @@ export default function Header({ health, clock, wsConnected }: HeaderProps) {
   const istDisplay = ist.includes('T') ? ist.split('T')[1]?.replace('Z', '') : ist;
 
   return (
-    <header className="bg-panel border-b border-rule sticky top-0 z-40">
-      <div className="max-w-[1200px] mx-auto flex flex-wrap items-center gap-x-5 gap-y-1.5 px-4 py-2 text-[11px] font-mono-val tabular-nums text-ink-muted">
+    <header className="bg-panel/90 border-b border-rule sticky top-16 z-40 px-4">
+      <div className="max-w-[1200px] mx-auto flex flex-wrap items-center gap-x-5 gap-y-1.5 py-2 text-[11px] font-mono-val tabular-nums text-ink-muted">
         <div className="flex items-center gap-1.5">
           <span
             className="inline-block w-1.5 h-1.5 rounded-full"
-            style={{ backgroundColor: wsConnected ? 'var(--color-ok)' : 'var(--color-alarm)' }}
+            style={{
+              backgroundColor: wsConnected ? 'var(--color-ok)' : 'var(--color-alarm)',
+              boxShadow: `0 0 6px 1px ${wsConnected ? 'rgba(52,211,153,0.7)' : 'rgba(239,122,90,0.7)'}`,
+            }}
             aria-hidden="true"
           />
           <span className={wsConnected ? 'text-ok' : 'text-alarm'}>
@@ -52,8 +55,8 @@ export default function Header({ health, clock, wsConnected }: HeaderProps) {
         <span
           className={`px-1.5 py-0.5 border font-bold tracking-[0.08em] ${
             health?.mode === 'replay'
-              ? 'text-warn border-warn bg-[#fffbeb]'
-              : 'text-ok border-ok bg-[#f0fdf4]'
+              ? 'text-warn border-warn bg-warn/10'
+              : 'text-ok border-ok bg-ok/10'
           }`}
         >
           {health?.mode === 'replay' ? 'REPLAY' : 'LIVE'}

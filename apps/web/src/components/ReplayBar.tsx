@@ -35,7 +35,7 @@ export default function ReplayBar() {
 
   return (
     <footer
-      className="bg-accent-wash/60 border-t border-rule sticky bottom-0 z-30 px-4 py-2.5"
+      className="bg-panel/90 border-t border-rule sticky bottom-0 z-30 px-4 py-2.5"
       role="toolbar"
       aria-label="Replay controls"
     >
@@ -126,7 +126,7 @@ export default function ReplayBar() {
             onPointerUp={commitScrub}
             onKeyUp={commitScrub}
             onBlur={commitScrub}
-            className="w-full h-1.5 bg-surface border border-rule rounded-none appearance-none cursor-pointer accent-[#b45309]"
+            className="w-full h-1.5 bg-surface border border-rule rounded-none appearance-none cursor-pointer accent-[#e6a94c]"
           />
 
           <span className="text-[11px] font-mono-val tabular-nums text-ink-muted min-w-12">
