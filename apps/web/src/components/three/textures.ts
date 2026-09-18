@@ -81,3 +81,43 @@ export function getEarthTextures(): { land: THREE.CanvasTexture; lights: THREE.C
   cached = { land, lights };
   return cached;
 }
+
+let realCached: { day: THREE.Texture; night: THREE.Texture; clouds: THREE.Texture } | null = null;
+
+/**
+ * Loads the real photographic Earth textures (public/textures — CC BY 4.0,
+ * solarsystemscope.com Blue Marble derivatives) once per session.
+ */
+export function getRealEarthTextures(): { day: THREE.Texture; night: THREE.Texture; clouds: THREE.Texture } {
+  if (realCached) return realCached;
+  const loader = new THREE.TextureLoader();
+
+  const day = loader.load('/textures/earth_day.jpg');
+  day.colorSpace = THREE.SRGBColorSpace;
+  day.anisotropy = 4;
+
+  const night = loader.load('/textures/earth_night.jpg');
+  night.colorSpace = THREE.SRGBColorSpace;
+  night.anisotropy = 4;
+
+  const clouds = loader.load('/textures/earth_clouds.jpg');
+  clouds.colorSpace = THREE.SRGBColorSpace;
+
+  realCached = { day, night, clouds };
+  return realCached;
+}
+
+/**
+ * Loads the real photographic Sun texture (public/textures — CC BY 4.0,
+ * solarsystemscope.com) once per session.
+ */
+let sunCached: THREE.Texture | null = null;
+export function getRealSunTexture(): THREE.Texture {
+  if (sunCached) return sunCached;
+  const tex = new THREE.TextureLoader().load('/textures/sun.jpg');
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.anisotropy = 4;
+  sunCached = tex;
+  return tex;
+}

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { MotionValue } from 'framer-motion';
+import { getRealSunTexture } from './textures';
 
 /* ------------------------------------------------------------------ */
 /* Shaders                                                            */
@@ -10,7 +11,9 @@ import type { MotionValue } from 'framer-motion';
 const SUN_VERT = /* glsl */ `
   varying vec3 vNormal;
   varying vec3 vPos;
+  varying vec2 vUv;
   void main() {
+    vUv = uv;
     vNormal = normalize(mat3(modelMatrix) * normal);
     vPos = (modelMatrix * vec4(position, 1.0)).xyz;
     gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
@@ -22,10 +25,12 @@ const SUN_VERT = /* glsl */ `
    burnt dark tone instead of a bright ring, so the sphere reads as a
    dimensional body, not a flat glowing circle. */
 const SUN_FRAG = /* glsl */ `
+  uniform sampler2D uMap;
   uniform float uTime;
   uniform float uEnergy;
   varying vec3 vNormal;
   varying vec3 vPos;
+  varying vec2 vUv;
 
   float hash(vec3 p) {
     p = fract(p * 0.3183099 + 0.1);
@@ -58,39 +63,38 @@ const SUN_FRAG = /* glsl */ `
     vec3 dir = normalize(vPos);
     // 1 at the visible disk centre -> 0 at the limb.
     float r = 1.0 - clamp(vNormal.z, 0.0, 1.0);
-
-    // Crisp granulation, coarse mottling and occasional dark pores.
     float t = uTime;
-    float gran  = fbm(dir * 13.0 + vec3(0.0, -t * 0.016, t * 0.013));
-    float mottle = fbm(dir * 3.1 + vec3(t * 0.010, 0.0, t * 0.006));
-    float pores = smoothstep(0.60, 0.82, mottle);
-    float cells = smoothstep(0.38, 0.50, gran) * (0.7 + 0.3 * gran);
-    float rough = mix(mottle, cells, 0.82) * (1.0 - pores * 0.5);
-    float activity = clamp(rough + (rough - 0.5) * 0.5 * uEnergy, 0.0, 1.4);
 
-    vec3 burnt  = vec3(0.045, 0.035, 0.008); /* black mixed with yellow */
-    vec3 rim    = vec3(0.30, 0.16, 0.02);
-    vec3 orange = vec3(1.00, 0.46, 0.05);
-    vec3 amber  = vec3(1.00, 0.66, 0.13);
-    vec3 yellow = vec3(1.00, 0.84, 0.32);
-    vec3 white  = vec3(1.00, 0.95, 0.66);
+    // Real photographic solar surface, slowly self-scrolling so the plasma
+    // detail keeps drifting independently of the mesh's own axial spin.
+    vec2 uv = vUv + vec2(t * 0.0035, 0.0);
+    vec3 tex = pow(texture2D(uMap, uv).rgb, vec3(1.05));
 
-    // Radial banding: dark limb -> orange -> amber -> yellow -> white core.
-    vec3 col = mix(rim, orange, 1.0 - smoothstep(0.45, 0.9, r));
-    col = mix(col, amber, 1.0 - smoothstep(0.20, 0.50, r));
-    col = mix(col, yellow, 1.0 - smoothstep(0.05, 0.27, r));
-    col = mix(col, white, (1.0 - smoothstep(0.0, 0.13, r)) * 0.88);
+    // Domain-warped ridged noise carves looping prominence / filament
+    // tendrils that flare brightest near the limb, layered on the photo.
+    vec3 warp = dir + 0.42 * vec3(
+      fbm(dir * 2.4 + vec3(0.0, t * 0.02, 0.0)),
+      fbm(dir * 2.4 + vec3(11.3, t * 0.017, 5.1)),
+      fbm(dir * 2.4 + vec3(31.7, t * 0.014, 9.2))
+    );
+    float loopField = fbm(warp * 4.2 + vec3(0.0, t * 0.03, 0.0));
+    float ridged = 1.0 - abs(loopField * 2.0 - 1.0);
+    float tendrils = pow(ridged, 4.0);
 
-    // Rough plasma granulation across the surface.
-    col *= 0.68 + 0.5 * activity;
+    vec3 col = tex * (0.75 + 0.4 * uEnergy);
 
-    // Dimensional limb: bright surface fades into a burnt black-yellow
-    // edge — volume, not a hard border.
-    float limb = smoothstep(0.55, 1.0, r);
-    col *= 1.0 - 0.62 * limb;
-    col = mix(col, burnt, limb * 0.72);
+    // Bright looping tendrils, strongest toward the limb where real solar
+    // arcs reach off the visible surface.
+    float limbBoost = smoothstep(0.25, 1.0, r);
+    vec3 hot = vec3(1.0, 0.62, 0.2);
+    col = mix(col, mix(col, hot, 0.8) * 1.2, tendrils * limbBoost * (0.45 + 0.35 * uEnergy));
 
-    col *= 1.5;
+    // Gentle warm-dark falloff right at the edge — stays lit and fiery
+    // rather than collapsing into a flat dark ring.
+    float limb = smoothstep(0.9, 1.0, r);
+    col = mix(col, vec3(0.05, 0.03, 0.01), limb * 0.12);
+
+    col *= 0.92;
 
     gl_FragColor = vec4(col, 1.0);
   }
@@ -112,13 +116,31 @@ const CORONA_FRAG = /* glsl */ `
   uniform float uEnergy;
   varying vec3 vNormal;
   varying vec3 vWorld;
+
+  float hash(vec2 p) { return fract(sin(dot(p, vec2(41.3, 289.1))) * 43758.5453); }
+  float noise(vec2 p) {
+    vec2 i = floor(p), f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);
+    return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x),
+               mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
+  }
+
   void main() {
     vec3 V = normalize(cameraPosition - vWorld);
     float ndv = max(dot(normalize(vNormal), V), 0.0);
     // Smooth exponential falloff: a soft haze, never a crisp ring.
     float soft = exp(-SOFT * ndv);
-    float alpha = soft * (BASE + 0.5 * uProximity + 0.35 * uEnergy);
-    float pulse = 1.0 + 0.07 * sin(uTime * PULSE_SPEED);
+
+    // Wispy irregularity so the glow reads as uneven corona streamers
+    // instead of a perfectly uniform painted outline.
+    vec3 dir = normalize(vWorld);
+    float ang = atan(dir.z, dir.y);
+    float wisp = noise(vec2(ang * 2.6, uTime * 0.05)) * 0.6
+      + noise(vec2(ang * 6.0 - uTime * 0.08, dir.x * 2.0)) * 0.4;
+    float streamers = 0.55 + 0.75 * wisp;
+
+    float alpha = soft * streamers * (BASE + 0.4 * uProximity + 0.3 * uEnergy);
+    float pulse = 1.0 + 0.06 * sin(uTime * PULSE_SPEED);
     gl_FragColor = vec4(COLOR, 1.0) * alpha * pulse;
   }
 `;
@@ -195,11 +217,13 @@ export default function Sun({ inside, reduced = false }: SunProps) {
 
   const scale = tiny ? 1.55 : 2.7;
   const group = useRef<THREE.Group>(null);
+  const sunMesh = useRef<THREE.Mesh>(null);
   const sunMat = useRef<THREE.ShaderMaterial>(null);
   const innerCorona = useRef<THREE.ShaderMaterial>(null);
   const outerCorona = useRef<THREE.ShaderMaterial>(null);
   const particleMat = useRef<THREE.ShaderMaterial>(null);
   const streakMat = useRef<THREE.LineBasicMaterial>(null);
+  const sunMap = useMemo(() => getRealSunTexture(), []);
 
   const hovered = useRef(false);
   const motion = useRef({ prox: 0, energy: 0 });
@@ -392,6 +416,9 @@ export default function Sun({ inside, reduced = false }: SunProps) {
     }
     pools.sGeo.attributes.position.needsUpdate = true;
 
+    /* Slow real axial spin of the 3D sphere (not just a scrolling texture). */
+    if (sunMesh.current) sunMesh.current.rotation.y += dt * 0.045;
+
     /* Feed uniforms. */
     const p = motion.current.prox;
     if (sunMat.current) {
@@ -414,13 +441,13 @@ export default function Sun({ inside, reduced = false }: SunProps) {
     }
   });
 
-  const innerFragment = CORONA_FRAG.replace('COLOR', 'vec3(1.0, 0.55, 0.22)')
-    .replace('SOFT', '4.0')
-    .replace('BASE', '0.33')
+  const innerFragment = CORONA_FRAG.replace('COLOR', 'vec3(1.0, 0.5, 0.2)')
+    .replace('SOFT', '5.5')
+    .replace('BASE', '0.1')
     .replace('PULSE_SPEED', '1.7');
-  const outerFragment = CORONA_FRAG.replace('COLOR', 'vec3(1.0, 0.48, 0.20)')
-    .replace('SOFT', '1.9')
-    .replace('BASE', '0.16')
+  const outerFragment = CORONA_FRAG.replace('COLOR', 'vec3(1.0, 0.42, 0.16)')
+    .replace('SOFT', '3.6')
+    .replace('BASE', '0.05')
     .replace('PULSE_SPEED', '1.1');
 
   const sunGeom = useMemo(() => new THREE.SphereGeometry(1, 84, 84), []);
@@ -429,6 +456,7 @@ export default function Sun({ inside, reduced = false }: SunProps) {
     <group ref={group} position={tiny ? [-3.5, 0.8, 0] : SUN_CENTER.toArray()} scale={scale}>
       {/* Layer 3 · the dimensional Sun sphere */}
       <mesh
+        ref={sunMesh}
         geometry={sunGeom}
         onPointerOver={(ev) => {
           if (reduced) return;
@@ -443,13 +471,13 @@ export default function Sun({ inside, reduced = false }: SunProps) {
           ref={sunMat}
           vertexShader={SUN_VERT}
           fragmentShader={SUN_FRAG}
-          uniforms={{ uTime: { value: 0 }, uEnergy: { value: 0 } }}
+          uniforms={{ uTime: { value: 0 }, uEnergy: { value: 0 }, uMap: { value: sunMap } }}
           toneMapped={false}
         />
       </mesh>
 
       {/* Layer 4 · soft atmospheric corona (transparent, fades out) */}
-      <mesh geometry={sunGeom} scale={1.1}>
+      <mesh geometry={sunGeom} scale={1.015}>
         <shaderMaterial
           ref={innerCorona}
           vertexShader={CORONA_VERT}
@@ -461,7 +489,7 @@ export default function Sun({ inside, reduced = false }: SunProps) {
           depthWrite={false}
         />
       </mesh>
-      <mesh geometry={sunGeom} scale={1.28}>
+      <mesh geometry={sunGeom} scale={1.09}>
         <shaderMaterial
           ref={outerCorona}
           vertexShader={CORONA_VERT}

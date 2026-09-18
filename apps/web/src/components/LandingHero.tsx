@@ -132,6 +132,21 @@ export default function LandingHero() {
 
         {/* ================= 2D HUD OVERLAY ================= */}
         <div className="pointer-events-none absolute inset-0 z-20">
+          {/* Upper-right tagline */}
+          <motion.div
+            {...(reduced ? {} : fade(0.3).initial)}
+            {...(reduced ? {} : fade(0.3).animate)}
+            transition={fade(0.3).transition}
+            className="sk-tagline hidden lg:block absolute right-8 top-24 text-right"
+          >
+            <p className="font-serif italic text-sm md:text-base leading-relaxed text-white/80">
+              A safer tomorrow,
+              <br />
+              under a calmer Sun.
+            </p>
+            <span className="mt-3 ml-auto block h-px w-14 bg-gradient-to-l from-accent/60 to-transparent" aria-hidden="true" />
+          </motion.div>
+
           {/* Centre hero block */}
           <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center">
             <motion.p
@@ -149,7 +164,7 @@ export default function LandingHero() {
               {...(reduced ? {} : fade(0.25).initial)}
               {...(reduced ? {} : fade(0.25).animate)}
               transition={fade(0.25).transition}
-              className="mt-5 font-display sk-title-glow text-[clamp(3rem,9vw,7.5rem)] leading-[0.95] text-white"
+              className="mt-4 font-display sk-title-glow text-[clamp(2.5rem,6.5vw,6.5rem)] leading-[0.95] text-white"
             >
               SURYAKAVACH
             </motion.h1>
@@ -158,7 +173,7 @@ export default function LandingHero() {
               {...(reduced ? {} : fade(0.38).initial)}
               {...(reduced ? {} : fade(0.38).animate)}
               transition={fade(0.38).transition}
-              className="mt-6 max-w-2xl font-serif italic text-base md:text-xl leading-relaxed text-white/80"
+              className="mt-5 max-w-2xl font-serif italic text-base md:text-xl leading-relaxed text-white/80"
             >
               Because what happens on the <span className="text-accent-soft not-italic">Sun</span>{' '}
               doesn&rsquo;t always stay <em className="text-accent-soft">there</em>.
@@ -168,7 +183,7 @@ export default function LandingHero() {
               {...(reduced ? {} : fade(0.52).initial)}
               {...(reduced ? {} : fade(0.52).animate)}
               transition={fade(0.52).transition}
-              className="mt-10"
+              className="mt-8"
             >
               <a
                 href="/live"
@@ -197,7 +212,7 @@ export default function LandingHero() {
           </div>
 
           <div className="sk-callout sk-callout--wind hidden xl:block">
-            <CalloutLine aim="right-down" />
+            <CalloutLine aim="left-down" />
             <div className="sk-callout-title">
               <span className="sk-callout-dot sk-callout-dot--cool" aria-hidden="true" />
               Solar Wind
