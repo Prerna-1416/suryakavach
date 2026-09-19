@@ -1,9 +1,17 @@
 import { test, expect } from '@playwright/test';
 
+/* The 3D hero is a lazily-fetched chunk on purpose — it is ~900KB of
+   three.js/R3F that phones must never pay for (see src/lib/responsive.ts and
+   the mobile specs). So this assertion now waits on a network-delivered
+   module graph, and on a cold dev server shared with the parallel mobile
+   projects that can take longer than the suite's 5s default. The wait is
+   raised here rather than globally so every other assertion keeps its teeth. */
+const SCENE_CHUNK_TIMEOUT = 15_000;
+
 test.describe('SURYAKAVACH Operator Console', () => {
   test('loads the WebGL landing hero with all nav links visible', async ({ page }) => {
     await page.goto('/');
-    await expect(page.locator('canvas').first()).toBeAttached();
+    await expect(page.locator('canvas').first()).toBeAttached({ timeout: SCENE_CHUNK_TIMEOUT });
     await expect(page.getByRole('heading', { level: 1, name: 'SURYAKAVACH' })).toBeVisible();
     for (const item of ['Home', 'Live', 'Forecast', 'Impact', 'Replay', 'About']) {
       await expect(page.getByRole('link', { name: item, exact: true })).toBeVisible();
@@ -13,7 +21,7 @@ test.describe('SURYAKAVACH Operator Console', () => {
   test('hero renders the 3D scene canvas with the scroll cue overlay', async ({ page }) => {
     await page.goto('/');
     const canvas = page.locator('canvas').first();
-    await expect(canvas).toBeVisible();
+    await expect(canvas).toBeVisible({ timeout: SCENE_CHUNK_TIMEOUT });
     await expect(page.getByText('Scroll to Explore')).toBeVisible();
   });
 

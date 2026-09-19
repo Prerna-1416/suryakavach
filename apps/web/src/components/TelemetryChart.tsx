@@ -3,6 +3,7 @@ import { Plot } from '../lib/plotly';
 import Panel from './ui/Panel';
 import type { StreamsLatest } from '../types/api';
 import { GOES_CLASSES, SERIES_COLORS, CHART_COLORS, goesClassColor } from '../lib/constants';
+import { useIsMobile } from '../lib/responsive';
 
 interface TelemetryChartProps {
   streams: StreamsLatest | null;
@@ -11,6 +12,11 @@ interface TelemetryChartProps {
 }
 
 const WINDOWS = [60, 120, 360, 1440];
+
+/** Plot height: short enough to leave the page scannable on a phone, tall
+ *  enough that a decade of the log axis stays legible. */
+const HEIGHT_MOBILE = 300;
+const HEIGHT_DESKTOP = 400;
 
 /** Compress the per-sample quality flags into ≤160 cells for the strip. */
 function bucketQuality(quality: number[], maxCells = 160): number[] {
@@ -26,7 +32,12 @@ function bucketQuality(quality: number[], maxCells = 160): number[] {
 }
 
 export default function TelemetryChart({ streams, windowSize, onWindowChange }: TelemetryChartProps) {
-  const [showPosterior, setShowPosterior] = useState(true);
+  const isMobile = useIsMobile();
+  const chartHeight = isMobile ? HEIGHT_MOBILE : HEIGHT_DESKTOP;
+  // Three overlaid axes do not survive a 320px column: the posterior starts
+  // hidden on phones (one tap restores it) so the two payload traces and the
+  // flare bands get the full width.
+  const [showPosterior, setShowPosterior] = useState(() => !isMobile);
 
   const solexs = streams?.solexs ?? [];
   const hel1os = streams?.hel1os ?? [];
@@ -58,50 +69,70 @@ export default function TelemetryChart({ streams, windowSize, onWindowChange }: 
   const layout = useMemo(
     () => ({
       autosize: true,
-      height: 400,
+      height: chartHeight,
       // Right margin widened: two axes live on the right (HXR + P(CP)).
-      margin: { l: 56, r: 76, t: 16, b: 36 },
+      // On a phone the margins are drawn in: every pixel of left/right inset
+      // is a pixel the traces lose, and the axis titles are dropped because
+      // the tick labels already carry the unit (A…X10 / W/m²).
+      margin: isMobile
+        ? { l: 40, r: showPosterior ? 44 : 38, t: 8, b: 30 }
+        : { l: 56, r: 76, t: 16, b: 36 },
       paper_bgcolor: 'rgba(0,0,0,0)',
       plot_bgcolor: CHART_COLORS.plotBg,
-      font: { family: 'JetBrains Mono, monospace', size: 10, color: CHART_COLORS.tick },
+      font: { family: 'JetBrains Mono, monospace', size: isMobile ? 9 : 10, color: CHART_COLORS.tick },
+      // Touch: drag-to-zoom would swallow the page scroll gesture, so on a
+      // phone the plot is fixed-range and the window buttons do the zooming.
+      dragmode: isMobile ? false : 'zoom',
       xaxis: {
         gridcolor: CHART_COLORS.grid,
         zerolinecolor: CHART_COLORS.zeroline,
         tickangle: 0,
-        nticks: 12,
+        nticks: isMobile ? 5 : 12,
+        fixedrange: isMobile,
       },
       yaxis: {
         type: 'log',
         range: [-8, -3],
-        title: { text: 'SXR W/m²', font: { color: SERIES_COLORS.sxr } },
+        title: isMobile
+          ? undefined
+          : { text: 'SXR W/m²', font: { color: SERIES_COLORS.sxr } },
         tickfont: { color: SERIES_COLORS.sxr },
         gridcolor: CHART_COLORS.grid,
         zerolinecolor: CHART_COLORS.zeroline,
         tickvals: [1e-8, 1e-7, 1e-6, 1e-5, 1e-4, 1e-3],
         ticktext: ['A', 'B', 'C', 'M', 'X', 'X10'],
+        fixedrange: isMobile,
       },
       yaxis2: {
         type: 'log',
         range: [-10, -4],
-        title: { text: 'HXR W/m²', font: { color: SERIES_COLORS.hxr } },
+        title: isMobile
+          ? undefined
+          : { text: 'HXR W/m²', font: { color: SERIES_COLORS.hxr } },
         tickfont: { color: SERIES_COLORS.hxr },
         overlaying: 'y',
         side: 'right',
         showgrid: false,
+        fixedrange: isMobile,
       },
       // Posterior is a 0–1 probability: it needs its own linear axis.
       // Plotting it on the log SXR axis left it five decades below the
       // visible window, i.e. invisible.
       yaxis3: {
         range: [0, 1],
-        title: { text: 'P(CP)', font: { color: SERIES_COLORS.posterior } },
+        title: isMobile
+          ? undefined
+          : { text: 'P(CP)', font: { color: SERIES_COLORS.posterior } },
         tickfont: { color: SERIES_COLORS.posterior },
         overlaying: 'y',
         side: 'right',
         position: 0.96,
         showgrid: false,
+        fixedrange: isMobile,
       },
-      showlegend: true,
+      // Phones drop the legend: the series are identified by the panel meta
+      // and the labelled axes, and a 3-row legend costs ~15% of the height.
+      showlegend: !isMobile,
       legend: { orientation: 'h', y: 1.12, font: { size: 10, color: CHART_COLORS.tick } },
       shapes: [
         // Data gaps: grey bands behind the traces.
@@ -143,7 +174,7 @@ export default function TelemetryChart({ streams, windowSize, onWindowChange }: 
         })),
       ],
     }),
-    [gaps, flareIntervals],
+    [gaps, flareIntervals, isMobile, showPosterior, chartHeight],
   ) as unknown as Partial<Plotly.Layout>;
 
   // Tint each flare-interval band with its own class colour. The shapes
@@ -220,7 +251,7 @@ export default function TelemetryChart({ streams, windowSize, onWindowChange }: 
           type="button"
           onClick={() => setShowPosterior(!showPosterior)}
           aria-pressed={showPosterior}
-          className={`px-2.5 py-1 text-[11px] font-mono-val border transition-colors ${
+          className={`sk-touch px-2.5 py-1 text-[11px] font-mono-val border transition-colors ${
             showPosterior
               ? 'text-accent border-accent bg-accent-wash'
               : 'text-ink-muted border-rule hover:text-ink'
@@ -236,7 +267,8 @@ export default function TelemetryChart({ streams, windowSize, onWindowChange }: 
               type="button"
               onClick={() => onWindowChange(w)}
               aria-pressed={windowSize === w}
-              className={`px-2.5 py-1 ${
+              aria-label={`Show ${w >= 60 ? `${w / 60} hours` : `${w} minutes`} of telemetry`}
+              className={`sk-touch px-2.5 py-1 ${
                 windowSize === w
                   ? 'bg-accent text-white font-bold'
                   : 'text-ink-muted hover:text-ink'
@@ -248,15 +280,48 @@ export default function TelemetryChart({ streams, windowSize, onWindowChange }: 
         </div>
       </div>
 
-      <div className="w-full" style={{ height: 400 }}>
+      {/* Height is owned by the wrapper (CSS px), the Plot fills it and
+          useResizeHandler re-measures on every container resize — no
+          window.innerWidth read anywhere in this component. */}
+      <div className="w-full" style={{ height: chartHeight }}>
         <Plot
           data={data}
           layout={layoutWithFlares}
-          config={{ displayModeBar: false, responsive: true }}
+          config={{
+            displayModeBar: false,
+            responsive: true,
+            scrollZoom: false,
+            doubleClick: false,
+            displaylogo: false,
+          }}
           style={{ width: '100%', height: '100%' }}
           useResizeHandler
         />
       </div>
+
+      {/* Inline series key, phones only — replaces the hidden Plotly legend. */}
+      {isMobile && (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-[10px] font-mono-val text-ink-muted">
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block w-3 h-[2px]" style={{ background: SERIES_COLORS.sxr }} aria-hidden="true" />
+            SoLEXS SXR
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block w-3 h-[2px]" style={{ background: SERIES_COLORS.hxr }} aria-hidden="true" />
+            HEL1OS HXR
+          </span>
+          {showPosterior && (
+            <span className="flex items-center gap-1.5">
+              <span
+                className="inline-block w-3 h-[2px]"
+                style={{ background: `repeating-linear-gradient(90deg, ${SERIES_COLORS.posterior} 0 3px, transparent 3px 6px)` }}
+                aria-hidden="true"
+              />
+              BOCPD P(CP)
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Per-sample data quality — one cell per bucket, full width. */}
       {qualityCells.length > 0 && (

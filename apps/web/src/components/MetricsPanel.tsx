@@ -40,6 +40,50 @@ function CohortRow({ cohort, targetTss }: { cohort: Cohort; targetTss: number })
   );
 }
 
+/** Phone presentation of one cohort — label and verdict first, then the
+ *  skill scores as a labelled grid. */
+function CohortCard({ cohort, targetTss }: { cohort: Cohort; targetTss: number }) {
+  const meetsTarget = cohort.tss >= targetTss;
+  return (
+    <li className="border border-rule bg-panel p-3">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-sm font-semibold">{cohort.label}</span>
+        {meetsTarget ? (
+          <span className="text-[10px] font-bold text-ok px-1.5 py-0.5 border border-ok bg-ok/10 shrink-0">
+            MEETS ≥ {targetTss}
+          </span>
+        ) : (
+          <span className="text-[10px] font-bold text-alarm px-1.5 py-0.5 border border-alarm bg-alarm/10 shrink-0">
+            BELOW ≥ {targetTss}
+          </span>
+        )}
+      </div>
+      <dl className="grid grid-cols-4 gap-2 mt-3 pt-3 border-t border-rule text-[11px] font-mono-val tabular-nums">
+        <div>
+          <dt className="text-[10px] uppercase tracking-[0.1em] text-ink-faint">TSS</dt>
+          <dd className="mt-0.5 font-bold" style={{ color: meetsTarget ? 'var(--color-ok)' : 'var(--color-alarm)' }}>
+            {cohort.tss.toFixed(3)}
+          </dd>
+        </div>
+        <div>
+          <dt className="text-[10px] uppercase tracking-[0.1em] text-ink-faint">HSS</dt>
+          <dd className="mt-0.5">{cohort.hss.toFixed(3)}</dd>
+        </div>
+        <div>
+          <dt className="text-[10px] uppercase tracking-[0.1em] text-ink-faint">FAR</dt>
+          <dd className="mt-0.5">{cohort.far.toFixed(3)}</dd>
+        </div>
+        <div className="min-w-0">
+          <dt className="text-[10px] uppercase tracking-[0.1em] text-ink-faint">TP/FP/FN</dt>
+          <dd className="mt-0.5 text-ink-muted truncate">
+            {cohort.tp !== undefined ? `${cohort.tp}/${cohort.fp}/${cohort.fn}` : '—'}
+          </dd>
+        </div>
+      </dl>
+    </li>
+  );
+}
+
 /**
  * Offline validation, reported honestly. Both cohorts from the evaluation
  * report are shown side by side: the M+ row clears the PRD target, the
@@ -48,29 +92,39 @@ function CohortRow({ cohort, targetTss }: { cohort: Cohort; targetTss: number })
  * system. Figures come from METRICS in constants.ts.
  */
 export default function MetricsPanel() {
+  const cohorts: Cohort[] = [METRICS.allClass, METRICS.mPlus];
   return (
     <Panel label="Offline Validation" meta={<span>synthetic fused SoLEXS/HEL1OS cache</span>} tone="#16a34a">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 overflow-x-auto">
-          <table className="w-full text-xs">
-            <caption className="sr-only">
-              Detection skill by cohort, offline validation on the synthetic cache
-            </caption>
-            <thead>
-              <tr className="text-[10px] uppercase tracking-[0.1em] text-ink-faint text-left">
-                <th scope="col" className="px-3 py-2 font-semibold">Cohort</th>
-                <th scope="col" className="px-3 py-2 font-semibold text-right">TSS</th>
-                <th scope="col" className="px-3 py-2 font-semibold text-right">HSS</th>
-                <th scope="col" className="px-3 py-2 font-semibold text-right">FAR</th>
-                <th scope="col" className="px-3 py-2 font-semibold text-right" title="True positives / false positives / false negatives">TP / FP / FN</th>
-                <th scope="col" className="px-3 py-2 font-semibold text-right">PRD target</th>
-              </tr>
-            </thead>
-            <tbody className="text-ink">
-              <CohortRow cohort={METRICS.allClass} targetTss={METRICS.targetTss} />
-              <CohortRow cohort={METRICS.mPlus} targetTss={METRICS.targetTss} />
-            </tbody>
-          </table>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 lg:gap-6">
+        <div className="lg:col-span-2">
+          {/* Phones: one card per cohort. */}
+          <ul className="md:hidden flex flex-col gap-3">
+            {cohorts.map((c) => (
+              <CohortCard key={c.label} cohort={c} targetTss={METRICS.targetTss} />
+            ))}
+          </ul>
+
+          <div className="hidden md:block overflow-x-auto">
+            <table className="w-full text-xs">
+              <caption className="sr-only">
+                Detection skill by cohort, offline validation on the synthetic cache
+              </caption>
+              <thead>
+                <tr className="text-[10px] uppercase tracking-[0.1em] text-ink-faint text-left">
+                  <th scope="col" className="px-3 py-2 font-semibold">Cohort</th>
+                  <th scope="col" className="px-3 py-2 font-semibold text-right">TSS</th>
+                  <th scope="col" className="px-3 py-2 font-semibold text-right">HSS</th>
+                  <th scope="col" className="px-3 py-2 font-semibold text-right">FAR</th>
+                  <th scope="col" className="px-3 py-2 font-semibold text-right" title="True positives / false positives / false negatives">TP / FP / FN</th>
+                  <th scope="col" className="px-3 py-2 font-semibold text-right">PRD target</th>
+                </tr>
+              </thead>
+              <tbody className="text-ink">
+                <CohortRow cohort={METRICS.allClass} targetTss={METRICS.targetTss} />
+                <CohortRow cohort={METRICS.mPlus} targetTss={METRICS.targetTss} />
+              </tbody>
+            </table>
+          </div>
           <p className="mt-3 text-[11px] font-mono-val text-ink-faint">
             Source: {METRICS.provenance}. Not an operational claim.
           </p>

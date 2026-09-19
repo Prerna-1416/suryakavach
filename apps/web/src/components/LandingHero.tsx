@@ -1,5 +1,5 @@
-import { useId } from 'react';
-import type { MouseEvent as ReactMouseEvent } from 'react';
+import { lazy, Suspense, useId } from 'react';
+import type { CSSProperties, MouseEvent as ReactMouseEvent } from 'react';
 import { motion, useMotionValue } from 'framer-motion';
 import { useNowcast, useImpact, useStreams, useForecast } from '../lib/hooks';
 import { useRouter, isModifiedClick } from '../lib/router';
@@ -12,7 +12,118 @@ import {
   riskColor,
 } from '../lib/constants';
 import { usePrefersReducedMotion } from '../lib/motion';
-import SolarScene from './three/SolarScene';
+import { useHeavyVisualsAllowed, heavyVisualsAllowedNow } from '../lib/responsive';
+
+/**
+ * The WebGL scene (three.js + R3F + postprocessing, ~600KB of the bundle) is
+ * loaded on demand and only on devices the capability hook approves. Phones
+ * get the CSS hero below instead — same composition, no GPU work, no chunk
+ * download.
+ */
+const SolarScene = lazy(() => import('./three/SolarScene'));
+
+/**
+ * Start the scene download before React can ask for it.
+ *
+ * `lazy` only fires its import when the hero first renders — after the entry
+ * has been parsed, React has booted and the landing route has mounted. On a
+ * cold load that is a whole module-graph round trip of head start the scene
+ * never gets, and the CSS hero stays on screen for all of it. Firing the same
+ * import from the entry (main.tsx) lets the chunk download alongside the app
+ * rather than behind it.
+ *
+ * The device gate is re-checked here because hooks are not available that
+ * early, and the route check keeps a deep link to /live from paying for a hero
+ * it will never show.
+ */
+export function preloadSolarScene(): void {
+  if (typeof window === 'undefined') return;
+  if (window.location.pathname !== '/') return;
+  if (!heavyVisualsAllowedNow()) return;
+  void import('./three/SolarScene');
+}
+
+/** Deterministic star field for the CSS hero — no RNG, so it never reshuffles. */
+const CSS_STARS = Array.from({ length: 26 }, (_, i) => {
+  const a = (i * 2654435761) % 1000;
+  const b = (i * 40503) % 1000;
+  return {
+    left: `${(a / 1000) * 100}%`,
+    top: `${(b / 1000) * 62}%`,
+    size: i % 7 === 0 ? 2 : 1,
+    tw: `${2.6 + ((i * 7) % 5) * 0.42}s`,
+    delay: `${((i * 13) % 40) / 10}s`,
+  };
+});
+
+/**
+ * Pure-CSS solar system used when WebGL is not appropriate: the phone hero,
+ * the reduced-motion hero, and the Suspense fallback while the 3D chunk is in
+ * flight. Same Sun-left / Earth-right composition and the same instrument
+ * palette as the WebGL scene, so the landing page does not change identity
+ * between devices.
+ */
+function HeroBackdrop({ label }: { label?: string }) {
+  return (
+    <div className="absolute inset-0 overflow-hidden sk-space-bg" aria-label={label} role={label ? 'img' : undefined}>
+      <div className="sk-nebula" aria-hidden="true" />
+
+      {/* Static star field */}
+      <div className="absolute inset-0" aria-hidden="true">
+        {CSS_STARS.map((s, i) => (
+          <span
+            key={i}
+            className="sk-star"
+            style={{
+              left: s.left,
+              top: s.top,
+              width: s.size,
+              height: s.size,
+              '--tw': s.tw,
+              '--tw-delay': s.delay,
+            } as CSSProperties}
+          />
+        ))}
+      </div>
+
+      {/* Sun */}
+      <div className="sk-sun-wrap" aria-hidden="true">
+        <div className="sk-sun-halo" />
+        <div className="sk-sun-rays" />
+        <div className="sk-sun-core" />
+        <div className="sk-sun-chromosphere" />
+        <div className="sk-sunspots">
+          <span className="sk-sunspot" style={{ left: '26%', top: '38%', width: '13%', height: '13%' }} />
+          <span className="sk-sunspot" style={{ left: '58%', top: '30%', width: '8%', height: '8%' }} />
+          <span className="sk-sunspot" style={{ left: '44%', top: '62%', width: '10%', height: '10%' }} />
+        </div>
+        <span className="sk-sun-loop sk-sun-loop-a" />
+        <span className="sk-sun-loop sk-sun-loop-b" />
+      </div>
+
+      {/* Earth */}
+      <div className="sk-earth-wrap" aria-hidden="true">
+        <div className="sk-earth">
+          <div className="sk-earth-lights" />
+          <span className="sk-cloud" style={{ left: '18%', top: '34%', width: '34%', height: '9%' }} />
+          <span className="sk-cloud" style={{ left: '46%', top: '58%', width: '28%', height: '7%' }} />
+          <span className="sk-cloud" style={{ left: '30%', top: '72%', width: '22%', height: '6%' }} />
+        </div>
+        <div className="sk-earth-shade" />
+        <div className="sk-earth-atmo" />
+      </div>
+
+      {/* Moon */}
+      <div className="sk-moon-pos" aria-hidden="true">
+        <div className="sk-moon-wrap">
+          <div className="sk-moon-halo" />
+          <div className="sk-moon" />
+          <div className="sk-moon-craters" />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 /** One live reading shown in the mission strip. */
 function Stat({
@@ -67,6 +178,7 @@ const MONITOR = ['Solar Flares', 'Coronal Mass Ejections', 'Radiation Levels', '
 export default function LandingHero() {
   const { go } = useRouter();
   const reduced = usePrefersReducedMotion();
+  const heavyVisuals = useHeavyVisualsAllowed();
 
   /* Mouse parallax state — the WebGL camera springs toward the cursor. */
   const mx = useMotionValue(0);
@@ -113,7 +225,7 @@ export default function LandingHero() {
     <div className="bg-space">
       {/* ================= HERO — WebGL solar system, 2D HUD overlay ================= */}
       <section
-        className="sk-scene relative h-[100svh] min-h-[680px] overflow-hidden bg-[#030305]"
+        className="sk-scene relative h-[100svh] min-h-[560px] md:min-h-[680px] overflow-hidden bg-[#030305]"
         onMouseMove={handleMove}
         onMouseLeave={handleLeave}
         onMouseEnter={() => inside.set(1)}
@@ -121,9 +233,17 @@ export default function LandingHero() {
         {/* 0 · Nebula dust behind the transparent WebGL canvas */}
         <div className="sk-nebula" aria-hidden="true" />
 
-        {/* 1 · The 3D scene: Sun, solar wind, Earth + parallax camera */}
+        {/* 1 · The scene. WebGL where the device can carry it, the CSS
+            composition everywhere else — including while the 3D chunk is
+            still downloading. */}
         <div className="absolute inset-0 z-10">
-          <SolarScene mx={mx} my={my} reduced={reduced} inside={inside} />
+          {heavyVisuals ? (
+            <Suspense fallback={<HeroBackdrop label="SURYAKAVACH solar observation scene" />}>
+              <SolarScene mx={mx} my={my} reduced={reduced} inside={inside} />
+            </Suspense>
+          ) : (
+            <HeroBackdrop label="SURYAKAVACH solar observation scene" />
+          )}
         </div>
 
         {/* Legibility softeners */}
@@ -148,7 +268,7 @@ export default function LandingHero() {
           </motion.div>
 
           {/* Centre hero block */}
-          <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center">
+          <div className="absolute inset-0 flex flex-col items-center justify-center px-4 sm:px-6 text-center">
             <motion.p
               {...(reduced ? {} : fade(0.15).initial)}
               {...(reduced ? {} : fade(0.15).animate)}
@@ -164,7 +284,7 @@ export default function LandingHero() {
               {...(reduced ? {} : fade(0.25).initial)}
               {...(reduced ? {} : fade(0.25).animate)}
               transition={fade(0.25).transition}
-              className="mt-4 font-display sk-title-glow text-[clamp(2.5rem,6.5vw,6.5rem)] leading-[0.95] text-white"
+              className="mt-4 sk-wordmark sk-title-glow text-[clamp(1.375rem,7vw,6.5rem)] leading-[0.95] text-white"
             >
               SURYAKAVACH
             </motion.h1>
@@ -173,7 +293,7 @@ export default function LandingHero() {
               {...(reduced ? {} : fade(0.38).initial)}
               {...(reduced ? {} : fade(0.38).animate)}
               transition={fade(0.38).transition}
-              className="mt-5 max-w-2xl font-serif italic text-base md:text-xl leading-relaxed text-white/80"
+              className="mt-5 max-w-2xl font-serif italic text-[clamp(1rem,3.6vw,1.25rem)] leading-relaxed text-white/80"
             >
               Because what happens on the <span className="text-accent-soft not-italic">Sun</span>{' '}
               doesn&rsquo;t always stay <em className="text-accent-soft">there</em>.
@@ -260,7 +380,7 @@ export default function LandingHero() {
       </section>
 
       {/* ================= MISSION STRIP ================= */}
-      <section id="mission" className="sk-scene relative border-t border-white/[0.05] bg-space px-5 py-16 md:py-24">
+      <section id="mission" className="sk-scene relative border-t border-white/[0.05] bg-space px-4 md:px-5 py-12 md:py-24">
         <div className="mx-auto max-w-6xl">
           <div className="flex items-center gap-3">
             <span className="w-6 h-px bg-accent/60" aria-hidden="true" />
@@ -270,17 +390,17 @@ export default function LandingHero() {
           </div>
 
           <div className="mt-3 max-w-2xl">
-            <h2 className="font-display text-3xl md:text-5xl leading-tight text-white">
+            <h2 className="font-display text-[clamp(1.625rem,5.4vw,3rem)] leading-tight text-white">
               Watch the sun. <span className="italic text-accent-soft">Protect the grid.</span>
             </h2>
-            <p className="mt-4 text-sm md:text-base leading-relaxed text-ink-muted">
+            <p className="mt-4 text-[15px] md:text-base leading-relaxed text-ink-muted">
               Countdown-level intelligence for solar flare onset — BOCPD change-point detection,
               Neupert-effect correlation, discrete hazard forecasts and a 0–10 radiation impact index,
               fused from the SoLEXS and HEL1OS payloads of ISRO&rsquo;s Aditya-L1 observatory.
             </p>
           </div>
 
-          <div className="mt-12 grid grid-cols-2 lg:grid-cols-4 gap-6 sk-glass p-6 md:p-8">
+          <div className="mt-10 md:mt-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 md:gap-6 sk-glass p-5 md:p-8">
             <Stat
               label="SoLEXS soft X-ray"
               value={sxr !== null ? sxr.toExponential(2) : '—'}
@@ -307,7 +427,7 @@ export default function LandingHero() {
           </div>
 
           {/* Nowcast state + forecast probability strip */}
-          <div className="mt-6 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 sk-glass p-6">
+          <div className="mt-5 md:mt-6 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-5 md:gap-6 sk-glass p-5 md:p-6">
             <div className="flex items-center gap-4">
               <span
                 className={`sk-signal`}
@@ -336,7 +456,7 @@ export default function LandingHero() {
               </div>
             </div>
 
-            <div className="flex items-center gap-5">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-3 md:gap-x-5">
               {(forecast?.horizons ?? [])
                 .filter((h) =>
                   FORECAST_HORIZONS.includes(h.horizon_min as (typeof FORECAST_HORIZONS)[number]),
@@ -358,7 +478,7 @@ export default function LandingHero() {
                     </div>
                   );
                 })}
-              <div className="ml-2 flex items-center gap-4">
+              <div className="ml-0 md:ml-2 flex items-center gap-4">
                 <a
                   href="/forecast"
                   onClick={(e) => {
@@ -366,7 +486,7 @@ export default function LandingHero() {
                     e.preventDefault();
                     go('/forecast');
                   }}
-                  className="text-[10px] uppercase tracking-[0.22em] text-accent-soft hover:text-white transition-colors"
+                  className="sk-touch inline-flex items-center text-[10px] uppercase tracking-[0.22em] text-accent-soft hover:text-white transition-colors"
                 >
                   Forecast →
                 </a>
@@ -377,7 +497,7 @@ export default function LandingHero() {
                     e.preventDefault();
                     go('/impact');
                   }}
-                  className="text-[10px] uppercase tracking-[0.22em] text-accent-soft hover:text-white transition-colors"
+                  className="sk-touch inline-flex items-center text-[10px] uppercase tracking-[0.22em] text-accent-soft hover:text-white transition-colors"
                 >
                   Impact →
                 </a>

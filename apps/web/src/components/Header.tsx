@@ -24,8 +24,8 @@ export default function Header({ health, clock, wsConnected }: HeaderProps) {
   const istDisplay = ist.includes('T') ? ist.split('T')[1]?.replace('Z', '') : ist;
 
   return (
-    <header className="bg-panel/90 border-b border-rule sticky top-16 z-40 px-4">
-      <div className="max-w-[1200px] mx-auto flex flex-wrap items-center gap-x-5 gap-y-1.5 py-2 text-[11px] font-mono-val tabular-nums text-ink-muted">
+    <header className="bg-panel/90 border-b border-rule sticky top-16 z-40 px-3 md:px-4 sk-safe-x">
+      <div className="max-w-[1200px] mx-auto flex flex-wrap items-center gap-x-4 md:gap-x-5 gap-y-1.5 py-2 text-[11px] font-mono-val tabular-nums text-ink-muted">
         <div className="flex items-center gap-1.5">
           <span
             className="inline-block w-1.5 h-1.5 rounded-full"
