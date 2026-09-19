@@ -20,7 +20,9 @@ export function installMatchMedia(initial: Record<string, boolean>): MatchMediaH
     listeners.set(query, target);
     return {
       media: query,
-      matches: state.get(query) ?? false,
+      get matches() {
+        return state.get(query) ?? false;
+      },
       onchange: null,
       addEventListener: (type: string, cb: (e: MediaQueryListEvent) => void) => {
         if (type === 'change') target.add(cb);

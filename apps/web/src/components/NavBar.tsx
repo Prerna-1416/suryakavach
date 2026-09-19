@@ -308,7 +308,7 @@ export default function NavBar({ wsConnected = true, mode = 'live', theme = 'ove
             aria-label={open ? 'Close navigation menu' : 'Open navigation menu'}
             aria-expanded={open}
             aria-controls={MENU_ID}
-            aria-haspopup="true"
+            aria-haspopup="dialog"
             onClick={() => setOpen((v) => !v)}
           >
             {open ? <X size={16} strokeWidth={1.8} /> : <Menu size={16} strokeWidth={1.8} />}
@@ -336,6 +336,9 @@ export default function NavBar({ wsConnected = true, mode = 'live', theme = 'ove
             <div
               id={MENU_ID}
               ref={panelRef}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Main navigation"
               onKeyDown={onPanelKeyDown}
               className={`absolute inset-x-0 top-full z-50 border-b border-rule ${solid ? 'bg-panel' : 'sk-glass'} sk-safe-x sk-safe-b`}
             >

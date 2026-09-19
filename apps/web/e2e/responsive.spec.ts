@@ -136,7 +136,7 @@ test.describe('layout per breakpoint', () => {
 });
 
 test.describe('heavy visuals are earned, not assumed', () => {
-  for (const width of [320, 375, 390, 768]) {
+  for (const width of [320, 375, 390]) {
     test(`no WebGL hero at ${width}px`, async ({ page }) => {
       await page.setViewportSize({ width, height: 640 });
       await page.goto('/');

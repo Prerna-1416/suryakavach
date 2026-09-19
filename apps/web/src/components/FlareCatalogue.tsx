@@ -168,26 +168,49 @@ function FlareDetailSheet({
   onClose: () => void;
 }) {
   const closeRef = useRef<HTMLButtonElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
+    const opener = document.activeElement as HTMLElement | null;
     document.documentElement.classList.add('sk-scroll-locked');
     const id = window.setTimeout(() => closeRef.current?.focus(), 0);
+
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.stopPropagation();
-        onClose();
+        onCloseRef.current();
+        return;
+      }
+      if (e.key === 'Tab' && containerRef.current) {
+        const focusables = containerRef.current.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusables.length === 0) return;
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
       }
     };
+
     document.addEventListener('keydown', onKeyDown);
     return () => {
       window.clearTimeout(id);
       document.removeEventListener('keydown', onKeyDown);
       document.documentElement.classList.remove('sk-scroll-locked');
+      opener?.focus();
     };
-  }, [onClose]);
+  }, []);
 
   return (
-    <div className="fixed inset-0 z-[80] md:hidden" role="dialog" aria-modal="true" aria-label={`Flare ${flare.id} detail`}>
+    <div ref={containerRef} className="fixed inset-0 z-[80] md:hidden" role="dialog" aria-modal="true" aria-label={`Flare ${flare.id} detail`}>
       <div className="sk-sheet-backdrop" onClick={onClose} aria-hidden="true" />
       <div className="sk-sheet">
         <span className="sk-sheet-grip" aria-hidden="true" />

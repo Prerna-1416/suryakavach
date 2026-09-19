@@ -32,6 +32,10 @@ export default function ReplayBar() {
   };
 
   const commitScrub = () => {
+    if (busy) {
+      setScrubValue(null);
+      return;
+    }
     if (scrubValue === null) return;
     const target = scrubValue;
     setScrubValue(null);
@@ -123,19 +127,23 @@ export default function ReplayBar() {
                 <label className="sr-only" htmlFor="replay-scrubber-m">
                   Replay timeline
                 </label>
-                <input
-                  id="replay-scrubber-m"
-                  type="range"
-                  min={REPLAY.MIN_CURSOR}
-                  max={REPLAY.MAX_CURSOR}
-                  value={displayCursor}
-                  aria-valuetext={`${formatMinutes(displayCursor)} UTC`}
-                  onChange={(e) => setScrubValue(parseInt(e.target.value, 10))}
-                  onPointerUp={commitScrub}
-                  onKeyUp={commitScrub}
-                  onBlur={commitScrub}
-                  className="w-full h-2 bg-surface border border-rule rounded-none appearance-none cursor-pointer accent-[#e6a94c]"
-                />
+                <div className="relative flex items-center h-11">
+                  <input
+                    id="replay-scrubber-m"
+                    type="range"
+                    min={REPLAY.MIN_CURSOR}
+                    max={REPLAY.MAX_CURSOR}
+                    value={displayCursor}
+                    disabled={busy}
+                    aria-valuetext={`${formatMinutes(displayCursor)} UTC`}
+                    onChange={(e) => setScrubValue(parseInt(e.target.value, 10))}
+                    onPointerUp={commitScrub}
+                    onKeyUp={commitScrub}
+                    onBlur={commitScrub}
+                    className="w-full h-11 bg-transparent border-0 rounded-none appearance-none cursor-pointer accent-[#e6a94c] sk-touch z-10 disabled:cursor-wait"
+                  />
+                  <div className="absolute inset-x-0 h-2 bg-surface border border-rule pointer-events-none" aria-hidden="true" />
+                </div>
               </div>
             </div>
           )}
@@ -276,12 +284,13 @@ export default function ReplayBar() {
                 min={REPLAY.MIN_CURSOR}
                 max={REPLAY.MAX_CURSOR}
                 value={displayCursor}
+                disabled={busy}
                 aria-valuetext={`${formatMinutes(displayCursor)} UTC`}
                 onChange={(e) => setScrubValue(parseInt(e.target.value, 10))}
                 onPointerUp={commitScrub}
                 onKeyUp={commitScrub}
                 onBlur={commitScrub}
-                className="w-full h-1.5 bg-surface border border-rule rounded-none appearance-none cursor-pointer accent-[#e6a94c]"
+                className="w-full h-1.5 bg-surface border border-rule rounded-none appearance-none cursor-pointer accent-[#e6a94c] disabled:cursor-wait"
               />
 
               <span className="text-[11px] font-mono-val tabular-nums text-ink-muted min-w-12">

@@ -125,22 +125,8 @@ export function heavyVisualsAllowedNow(): boolean {
  */
 export function useHeavyVisualsAllowed(): boolean {
   const isMobile = useIsMobile();
-  const [reduced, setReduced] = useState(false);
-  const [lowEnd, setLowEnd] = useState(false);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
-      const mq = window.matchMedia(REDUCED_MOTION_QUERY);
-      setReduced(mq.matches);
-      const onChange = () => setReduced(mq.matches);
-      mq.addEventListener('change', onChange);
-      return () => mq.removeEventListener('change', onChange);
-    }
-  }, []);
-
-  useEffect(() => {
-    setLowEnd(isLowEndDevice());
-  }, []);
+  const reduced = useMediaQuery(REDUCED_MOTION_QUERY);
+  const [lowEnd] = useState(isLowEndDevice);
 
   return !isMobile && !reduced && !lowEnd;
 }

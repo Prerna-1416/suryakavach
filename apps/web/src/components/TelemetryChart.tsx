@@ -37,7 +37,8 @@ export default function TelemetryChart({ streams, windowSize, onWindowChange }: 
   // Three overlaid axes do not survive a 320px column: the posterior starts
   // hidden on phones (one tap restores it) so the two payload traces and the
   // flare bands get the full width.
-  const [showPosterior, setShowPosterior] = useState(() => !isMobile);
+  const [posteriorPreference, setPosteriorPreference] = useState<boolean | null>(null);
+  const showPosterior = posteriorPreference ?? !isMobile;
 
   const solexs = streams?.solexs ?? [];
   const hel1os = streams?.hel1os ?? [];
@@ -249,7 +250,7 @@ export default function TelemetryChart({ streams, windowSize, onWindowChange }: 
       <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
         <button
           type="button"
-          onClick={() => setShowPosterior(!showPosterior)}
+          onClick={() => setPosteriorPreference(!showPosterior)}
           aria-pressed={showPosterior}
           className={`sk-touch px-2.5 py-1 text-[11px] font-mono-val border transition-colors ${
             showPosterior
