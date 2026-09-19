@@ -12,12 +12,14 @@ import ReplayBar from './components/ReplayBar';
 import MetricsPanel from './components/MetricsPanel';
 import AlertCentre from './components/AlertCentre';
 import About from './components/About';
+import SeverityStrip from './components/SeverityStrip';
 import { useReplayStore } from './store/replayStore';
 import { useStreams, useNowcast, useForecast, useImpact, useHealth, useReplayDates } from './lib/hooks';
 import { WS_URL } from './lib/constants';
 import { useRouter, isModifiedClick } from './lib/router';
 import type { Clock } from './types/api';
 import { screenFade, usePrefersReducedMotion } from './lib/motion';
+import { useIsMobile } from './lib/responsive';
 
 function PageHeading({
   eyebrow,
@@ -30,18 +32,20 @@ function PageHeading({
 }) {
   const { go } = useRouter();
   return (
-    <div className="flex flex-wrap items-end justify-between gap-3 px-1">
-      <div>
+    <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2 px-1">
+      <div className="min-w-0">
         <div className="flex items-center gap-2">
           <span className="w-5 h-px bg-accent/60" aria-hidden="true" />
           <span className="text-[10px] uppercase tracking-[0.3em] text-ink-faint font-mono-val">
             {eyebrow}
           </span>
         </div>
-        <h1 className="mt-2 font-display text-3xl md:text-4xl leading-none text-screen-title">{title}</h1>
+        <h1 className="mt-2 font-display leading-none text-screen-title text-[clamp(1.625rem,6.2vw,2.25rem)]">
+          {title}
+        </h1>
       </div>
       {trail && (
-        <div className="flex items-center gap-4 text-[10px] uppercase tracking-[0.2em]">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] uppercase tracking-[0.2em]">
           {trail.map((t) => (
             <a
               key={t.href}
@@ -51,7 +55,7 @@ function PageHeading({
                 e.preventDefault();
                 go(t.href);
               }}
-              className="text-ink-faint hover:text-accent-soft transition-colors"
+              className="sk-touch inline-flex items-center text-ink-faint hover:text-accent-soft transition-colors"
             >
               {t.label} →
             </a>
@@ -65,6 +69,7 @@ function PageHeading({
 export default function App() {
   const { route } = useRouter();
   const reduced = usePrefersReducedMotion();
+  const isMobile = useIsMobile();
   const { setPlaying, setSpeed, setCursor, setEventDate, setDates, setMode } = useReplayStore();
 
   const [windowSize, setWindowSize] = useState(120);
@@ -133,7 +138,44 @@ export default function App() {
 
   const renderScreen = () => {
     switch (route.screen) {
-      case 'live':
+      case 'live': {
+        const heading = (
+          <PageHeading
+            eyebrow="Live Console"
+            title="Solar flare nowcast"
+            trail={[
+              { label: 'Flare Catalogue', href: '/catalogue' },
+              { label: 'Alert Centre', href: '/alerts' },
+            ]}
+          />
+        );
+        const banner = <NowcastBanner nowcastState={nowcastState ?? null} />;
+        const chart = (
+          <TelemetryChart
+            streams={streams ?? null}
+            windowSize={windowSize}
+            onWindowChange={handleWindowChange}
+          />
+        );
+
+        /* Phone: a straight priority stack — current state, how bad it is,
+           the newest warning, the live trace. Everything else (forecast
+           detail, full impact breakdown) follows below the fold. */
+        if (isMobile) {
+          return (
+            <div className="space-y-4">
+              {heading}
+              {banner}
+              <SeverityStrip impact={impact ?? null} />
+              <AlertCentre limit={1} compact />
+              {chart}
+              <ForecastCards forecast={forecast ?? null} />
+              <ImpactGauge impact={impact ?? null} />
+            </div>
+          );
+        }
+
+        /* Desktop and tablet: the existing console order is unchanged. */
         return (
           <motion.div
             className="space-y-5"
@@ -142,23 +184,17 @@ export default function App() {
             animate={reduced ? undefined : 'show'}
           >
             <motion.div variants={reduced ? undefined : { hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }}>
-              <PageHeading
-                eyebrow="Live Console"
-                title="Solar flare nowcast"
-                trail={[
-                  { label: 'Flare Catalogue', href: '/catalogue' },
-                  { label: 'Alert Centre', href: '/alerts' },
-                ]}
-              />
+              {heading}
             </motion.div>
-            <NowcastBanner nowcastState={nowcastState ?? null} />
-            <TelemetryChart streams={streams ?? null} windowSize={windowSize} onWindowChange={handleWindowChange} />
+            {banner}
+            {chart}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
               <ForecastCards forecast={forecast ?? null} />
               <ImpactGauge impact={impact ?? null} />
             </div>
           </motion.div>
         );
+      }
       case 'forecast':
         return (
           <motion.div className="space-y-5" {...screenFade}>
@@ -269,7 +305,7 @@ export default function App() {
       ) : (
         <div className="min-h-[100svh] flex flex-col">
           <Header health={health ?? null} clock={clock} wsConnected={wsConnected} />
-          <main id="main-content" className="flex-1 w-full max-w-[1200px] mx-auto px-4 py-8 space-y-5">
+          <main id="main-content" className="flex-1 w-full max-w-[1200px] mx-auto px-3 md:px-4 py-5 md:py-8 space-y-4 md:space-y-5">
             <AnimatePresence mode="wait" initial={false}>
               <motion.div
                 key={route.screen}

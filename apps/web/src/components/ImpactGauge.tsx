@@ -72,9 +72,9 @@ export default function ImpactGauge({ impact }: ImpactGaugeProps) {
         </span>
       }
     >
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6">
         {/* Index + R-scale track */}
-        <div className="lg:col-span-5 border border-rule p-4 flex flex-col justify-between gap-4">
+        <div className="lg:col-span-5 border border-rule p-3 md:p-4 flex flex-col justify-between gap-4">
           <div>
             <div className="flex items-center justify-between text-[10px] uppercase tracking-[0.12em] text-ink-faint">
               <span>Impact index 0–10</span>
@@ -114,7 +114,7 @@ export default function ImpactGauge({ impact }: ImpactGaugeProps) {
           </div>
 
           {/* Space-weather scale levels from the API */}
-          <div className="grid grid-cols-2 gap-4 border-t border-rule pt-3">
+          <div className="grid grid-cols-2 gap-3 md:gap-4 border-t border-rule pt-3">
             <Metric label="G-level" value={impact?.g_level ?? '—'} />
             <Metric label="S-level" value={impact?.s_level ?? '—'} />
           </div>
@@ -124,7 +124,7 @@ export default function ImpactGauge({ impact }: ImpactGaugeProps) {
         <div className="lg:col-span-7 flex flex-col gap-4">
           <div>
             <div className="text-[10px] uppercase tracking-[0.12em] text-ink-faint mb-2">Fusion subscores</div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 md:gap-4">
               {subscores.map(([key, weight]) => (
                 <Metric
                   key={key}

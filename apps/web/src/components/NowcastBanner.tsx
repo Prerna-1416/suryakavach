@@ -56,11 +56,11 @@ export default function NowcastBanner({ nowcastState }: NowcastBannerProps) {
         />
       ))}
 
-      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-5 p-4">
+      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 md:gap-5 p-3 md:p-4">
         {/* State + active flare identity */}
-        <div className="flex items-center gap-5 min-w-0">
+        <div className="flex items-center gap-3 md:gap-5 min-w-0 w-full lg:w-auto">
           <div
-            className="relative flex flex-col items-center justify-center w-24 h-20 border px-2 text-center shrink-0"
+            className="relative flex flex-col items-center justify-center w-20 h-20 md:w-24 md:h-20 border px-2 text-center shrink-0"
             style={{
               borderColor: active ? clsColor : 'var(--color-rule)',
               backgroundColor: active ? goesClassBg(active.peak_flux_sxr) : 'var(--color-surface)',
@@ -125,7 +125,7 @@ export default function NowcastBanner({ nowcastState }: NowcastBannerProps) {
         </div>
 
         {/* Active flare telemetry — each tile lifts gently on hover */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 w-full lg:w-auto">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 md:gap-4 w-full lg:w-auto">
           <motion.div {...hover}>
             <Metric
               label="SXR 0.5–10 Å"

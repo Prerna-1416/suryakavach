@@ -48,6 +48,30 @@ function CohortRow({ cohort }: { cohort: CohortRowProps }) {
   );
 }
 
+function CohortCard({ cohort }: { cohort: CohortRowProps }) {
+  const targetTss = cohort.targetTss ?? 0.6;
+  const meetsTarget = cohort.tss >= targetTss;
+  return (
+    <li className="border border-rule bg-panel p-3">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-sm font-semibold">{cohort.label}</span>
+        <span className={meetsTarget
+          ? 'text-[10px] font-bold text-ok px-1.5 py-0.5 border border-ok bg-ok/10'
+          : 'text-[10px] font-bold text-alarm px-1.5 py-0.5 border border-alarm bg-alarm/10'}
+        >
+          {meetsTarget ? `MEETS ≥ ${targetTss}` : `BELOW ≥ ${targetTss}`}
+        </span>
+      </div>
+      <dl className="grid grid-cols-4 gap-2 mt-3 pt-3 border-t border-rule text-[11px] font-mono-val tabular-nums">
+        <div><dt className="text-[10px] uppercase text-ink-faint">TSS</dt><dd className="font-bold">{cohort.tss.toFixed(3)}</dd></div>
+        <div><dt className="text-[10px] uppercase text-ink-faint">HSS</dt><dd>{cohort.hss.toFixed(3)}</dd></div>
+        <div><dt className="text-[10px] uppercase text-ink-faint">FAR</dt><dd>{cohort.far.toFixed(3)}</dd></div>
+        <div><dt className="text-[10px] uppercase text-ink-faint">TP/FP/FN</dt><dd className="truncate">{cohort.tp !== undefined ? `${cohort.tp}/${cohort.fp}/${cohort.fn}` : '—'}</dd></div>
+      </dl>
+    </li>
+  );
+}
+
 export default function MetricsPanel() {
   const { data: run, isLoading, error } = useMetrics();
 
@@ -112,7 +136,12 @@ export default function MetricsPanel() {
         {/* Main Grid: Detection Skill & Lead Time */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 overflow-x-auto">
-            <table className="w-full text-xs">
+            <ul className="md:hidden flex flex-col gap-3">
+              <CohortCard cohort={{ label: 'All classes (±15m)', tss: dm.tss, hss: dm.hss, far: dm.far, tp: dm.tp, fp: dm.fp, fn: dm.fn, targetTss, ciTss: cis?.tss }} />
+              {fs.m_class_plus && <CohortCard cohort={{ label: 'M-class+ (≥ 1e-5)', ...fs.m_class_plus, targetTss }} />}
+              {fs.x_class_plus && <CohortCard cohort={{ label: 'X-class+ (≥ 1e-4)', ...fs.x_class_plus, targetTss }} />}
+            </ul>
+            <table className="hidden md:table w-full text-xs">
               <caption className="sr-only">Detection skill by cohort and failure slices</caption>
               <thead>
                 <tr className="text-[10px] uppercase tracking-[0.1em] text-ink-faint text-left">

@@ -14,7 +14,28 @@ export default defineConfig({
     screenshot: 'only-on-failure',
   },
   projects: [
-    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    {
+      name: 'chromium',
+      // Mobile-viewport specs run in the touch projects below.
+      testIgnore: /mobile\.spec\.ts/,
+      // Pinned so the WebGL hero gate (which refuses under reduced motion) is
+      // deterministic regardless of the host's animation settings.
+      use: { ...devices['Desktop Chrome'], reducedMotion: 'no-preference' },
+    },
+    {
+      name: 'mobile-pixel5',
+      testMatch: /mobile\.spec\.ts/,
+      use: { ...devices['Pixel 5'], reducedMotion: 'no-preference' },
+    },
+    {
+      name: 'mobile-320',
+      testMatch: /mobile\.spec\.ts/,
+      use: {
+        ...devices['Pixel 5'],
+        viewport: { width: 320, height: 568 },
+        reducedMotion: 'no-preference',
+      },
+    },
   ],
   webServer: {
     command: 'npm run dev',

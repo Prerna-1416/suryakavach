@@ -1071,3 +1071,240 @@
   --color-accent: #e6a94c;
   --color-accent-soft: #f6cd8b;
 }
+
+/* ============================================================
+   MOBILE LAYER
+   Everything below exists so the console works from a 320px phone
+   up, without a second visual language. Rules are additive: the
+   desktop presentation is unchanged at ≥1024px.
+   ============================================================ */
+
+/* --- Wordmark --------------------------------------------
+   SURYAKAVACH is eleven wide-set serif characters. At the display
+   tracking (0.18em) it cannot fit a 320px viewport, so the tracking
+   opens with the viewport instead of the whole mark shrinking to
+   nothing. Deliberately unlayered so it wins over .font-display, whose
+   letter-spacing is fixed at 0.18em. */
+.sk-wordmark {
+  font-family: var(--font-serif);
+  font-weight: 300;
+  letter-spacing: 0.06em;
+}
+@media (min-width: 768px) {
+  .sk-wordmark {
+    letter-spacing: 0.18em;
+  }
+}
+
+/* --- Fluid type scale -------------------------------------
+   clamp() instead of breakpoint steps: a heading that scales with
+   the viewport never hits an awkward wrap on the 320–400px band,
+   and the min bounds keep body copy at/above 15px and micro-labels
+   legible. Use these on page/section headings; panel labels keep
+   their explicit px sizes. */
+.sk-t-display {
+  font-size: clamp(2rem, 8.4vw, 4.25rem);
+  line-height: 1.05;
+}
+.sk-t-h1 {
+  font-size: clamp(1.375rem, 4.4vw, 2rem);
+  line-height: 1.15;
+}
+.sk-t-h2 {
+  font-size: clamp(1.0625rem, 3.2vw, 1.375rem);
+  line-height: 1.25;
+}
+.sk-t-body {
+  font-size: clamp(0.9375rem, 2.5vw, 1rem);
+  line-height: 1.65;
+}
+.sk-t-small {
+  font-size: clamp(0.8125rem, 2.2vw, 0.875rem);
+  line-height: 1.55;
+}
+
+/* --- Safe areas -------------------------------------------
+   viewport-fit=cover (index.html) makes the insets non-zero on
+   notched phones. Sticky chrome pads itself so controls never sit
+   under the home indicator or a rounded corner. */
+.sk-safe-b {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.sk-safe-x {
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+}
+.sk-safe-bar-bottom {
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
+}
+.sk-safe-bar-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+/* --- Touch targets ----------------------------------------
+   WCAG 2.5.8 wants 24px minimum; the brief asks for 44px on
+   phones. Applied only under a coarse pointer + small viewport so
+   the dense desktop instrument layout keeps its sizing. */
+.sk-touch {
+  min-height: 32px;
+  min-width: 32px;
+}
+@media (max-width: 767px) {
+  .sk-touch {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* --- Horizontal scroll containment ------------------------
+   Wide data surfaces (tables kept as tables on tablet) scroll
+   inside their own box with a visible affordance, never the page. */
+.sk-hscroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+}
+.sk-hscroll-wrap {
+  position: relative;
+  min-width: 0;
+}
+/* Right-edge fade signals "there is more to the right". */
+.sk-hscroll-wrap::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 22px;
+  pointer-events: none;
+  background: linear-gradient(to right, transparent, var(--color-panel) 85%);
+}
+.sk-hscroll-hint {
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-ink-faint);
+}
+
+/* Scroll lock while a drawer / bottom sheet owns the viewport. */
+.sk-scroll-locked,
+.sk-scroll-locked body {
+  overflow: hidden;
+  touch-action: none;
+}
+
+/* --- Bottom sheet ----------------------------------------
+   Mobile replacement for the desktop side detail panel. Slides up
+   from the bottom edge, capped so the underlying screen stays
+   partly visible, and scrolls internally. */
+.sk-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: rgba(2, 4, 10, 0.66);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+}
+.sk-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 81;
+  display: flex;
+  flex-direction: column;
+  max-height: min(88svh, 760px);
+  background: var(--color-panel);
+  border-top: 1px solid var(--color-rule-strong);
+  border-radius: 8px 8px 0 0;
+  box-shadow: 0 -18px 48px rgba(0, 0, 0, 0.55);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  overscroll-behavior: contain;
+}
+.sk-sheet-grip {
+  display: block;
+  width: 40px;
+  height: 4px;
+  margin: 8px auto 0;
+  border-radius: 999px;
+  background: var(--color-rule-strong);
+  flex-shrink: 0;
+}
+.sk-sheet-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--color-rule);
+  flex-shrink: 0;
+}
+.sk-sheet-body {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding: 14px;
+  /* Flex child that must be allowed to shrink below its content height,
+     otherwise the sheet grows past max-height instead of scrolling. */
+  flex: 1 1 auto;
+  min-height: 0;
+}
+/* Light theme keeps the sheet as an instrument panel, not a dark hole. */
+:root.sk-theme-light .sk-sheet {
+  background: var(--color-panel);
+  border-top-color: var(--color-rule-strong);
+}
+
+/* --- Mobile card list ------------------------------------
+   Replaces the 9-column catalogue table below 768px. One flare per
+   card, key fields only, full detail on tap. */
+.sk-card {
+  background: var(--color-panel);
+  border: 1px solid var(--color-rule);
+  border-radius: 3px;
+}
+.sk-card-press {
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+.sk-card-press:active {
+  background: var(--color-panel-2);
+  border-color: var(--color-rule-strong);
+}
+
+/* --- Expandable section ----------------------------------
+   Methodology / secondary tables pushed behind a native <details>
+   on phones so the operator's first glance stays on live state. */
+.sk-details > summary {
+  cursor: pointer;
+  list-style: none;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sk-details > summary::-webkit-details-marker {
+  display: none;
+}
+.sk-details > summary::after {
+  content: "";
+  margin-left: auto;
+  width: 7px;
+  height: 7px;
+  border-right: 1px solid currentColor;
+  border-bottom: 1px solid currentColor;
+  transform: rotate(45deg) translate(-2px, -2px);
+  transition: transform 0.2s ease;
+}
+.sk-details[open] > summary::after {
+  transform: rotate(-135deg) translate(-2px, -2px);
+}
+
+/* --- Stacked toolbars ------------------------------------
+   Sticky bottom chrome (replay transport) must not swallow the
+   viewport on a short phone, so the sheet/transport heights are
+   capped and the body reserves matching space. */
+.sk-sticky-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 30;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
