@@ -66,7 +66,14 @@ def vectorize(feat: dict[str, float]) -> NDArray[np.float64]:
     return np.array([feat[n] for n in FEATURE_NAMES], dtype=np.float64)
 
 
-class DiscreteHazard:
+class ModelProvider:
+    """Abstract interface for flare forecast model providers."""
+
+    def predict(self, feat: dict[str, float], horizons: list[int]) -> dict[str, Any]:
+        raise NotImplementedError
+
+
+class DiscreteHazard(ModelProvider):
     """Calibrated discrete-time hazard: P(flare >= C1/M1) at 5/10/20/40 min."""
 
     def __init__(self) -> None:
@@ -131,4 +138,11 @@ class DiscreteHazard:
                     "p_m1": round(min(pm, 0.99), 3),
                 }
             )
-        return {"horizons": out, "p1_c": p1_c, "p1_m": p1_m}
+        return {"horizons": out, "p1_c": p1_c, "p1_m": p1_m, "model_provider": "discrete_hazard_baseline"}
+
+
+def get_model_provider(cfg: dict[str, Any] | None = None) -> ModelProvider:
+    """Factory retrieving active forecast model provider via ModelRegistry."""
+    from suryakavach.models.registry import ModelRegistry
+    return ModelRegistry.get_provider(cfg)
+

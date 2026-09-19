@@ -5,8 +5,14 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+from dotenv import load_dotenv
 
 _ROOT = Path(__file__).resolve().parents[2]
+
+# Local credentials (including PRADAN) live in the gitignored repository .env.
+# Existing process variables keep precedence so Docker/Render secrets are never
+# replaced by a developer's local file.
+load_dotenv(_ROOT / ".env", override=False)
 
 
 def load_config() -> dict[str, Any]:

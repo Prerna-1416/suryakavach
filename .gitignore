@@ -26,3 +26,6 @@ apps/web/dist-tsconfig-node/
 # One-off deploy payload dumps, not build inputs
 apps/web/deploy_args.json
 apps/web/deploy_payload.json
+
+# Claude Code / GSD Core local tooling
+.claude/

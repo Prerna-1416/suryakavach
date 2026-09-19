@@ -1,6 +1,7 @@
 import { ChevronRight } from 'lucide-react';
 import type { ImpactCurrent } from '../types/api';
-import { R_SCALE, rLevelColor } from '../lib/constants';
+import { rLevelColor } from '../lib/constants';
+import { useImpactScale } from '../lib/hooks';
 import { useRouter, isModifiedClick } from '../lib/router';
 
 interface SeverityStripProps {
@@ -20,9 +21,10 @@ interface SeverityStripProps {
  */
 export default function SeverityStrip({ impact }: SeverityStripProps) {
   const { go } = useRouter();
+  const { data: scale } = useImpactScale();
   const index = impact?.index ?? null;
   const hasData = index !== null;
-  const color = hasData ? rLevelColor(index) : 'var(--color-ink-faint)';
+  const color = hasData ? rLevelColor(impact?.r_level ?? 'R0') : 'var(--color-ink-faint)';
   const href = '/impact';
 
   return (
@@ -61,17 +63,17 @@ export default function SeverityStrip({ impact }: SeverityStripProps) {
 
       {/* R-scale track — same segments as the full gauge, phone-width. */}
       <div className="mt-2 flex w-full h-2.5 border border-rule overflow-hidden" aria-hidden="true">
-        {R_SCALE.map((rs) => (
+        {(scale?.bands ?? []).map((rs) => (
           <div
-            key={rs.level}
+            key={rs.r_level}
             className="flex-1 border-r border-rule last:border-r-0"
             style={{ backgroundColor: hasData && index >= rs.min ? rs.color : 'transparent' }}
           />
         ))}
       </div>
       <div className="flex justify-between mt-1 text-[9px] font-mono-val text-ink-faint" aria-hidden="true">
-        {R_SCALE.map((rs) => (
-          <span key={rs.level}>{rs.level}</span>
+        {(scale?.bands ?? []).map((rs) => (
+          <span key={rs.r_level}>{rs.r_level}</span>
         ))}
       </div>
     </a>

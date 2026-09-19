@@ -18,11 +18,12 @@ impact:
     duration: 0.15
   suit_available: false
 severity_bands:
-  - { max: 2.0, band: "None", r_level: "G0/R0" }
-  - { max: 4.0, band: "R1", r_level: "R1" }
-  - { max: 6.0, band: "R2-R3", r_level: "R2" }
-  - { max: 8.0, band: "R3-R4", r_level: "R4" }
-  - { max: 10.01, band: "R5", r_level: "R5" }
+  - { max: 2.0, band: "None", r_level: "R0", color: "#16a34a" }
+  - { max: 4.0, band: "R1", r_level: "R1", color: "#0284c7" }
+  - { max: 6.0, band: "R2", r_level: "R2", color: "#d97706" }
+  - { max: 8.0, band: "R3", r_level: "R3", color: "#ea580c" }
+  - { max: 9.0, band: "R4", r_level: "R4", color: "#dc2626" }
+  - { max: 10.01, band: "R5", r_level: "R5", color: "#991b1b" }
 replay:
   default_event: "2024-02-22"
   default_speed: 20
@@ -30,6 +31,14 @@ replay:
 data:
   cache_path: ./data
   seed: 42
+  source_state: synthetic
+  registry_path: ./data/registry/observed_products.sqlite
+  normalized_path: ./data/normalized
+calibration:
+  solexs_flux: null
+  require_calibrated_flux_for_impact: true
+impact_scale:
+  version: "2026-09-19-v1"
 baseline:
   sxr_onset: 5.0e-7
 rate_limit:

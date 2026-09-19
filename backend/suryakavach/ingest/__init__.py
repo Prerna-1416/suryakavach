@@ -4,6 +4,7 @@ from suryakavach.ingest.pradan import (
     load_real_day_files,
 )
 from suryakavach.ingest.synthetic import build_all_days, build_day, catalogue_injections
+from suryakavach.ingest.registry import ObservedProduct, ObservedProductRegistry
 
 __all__ = [
     "build_all_days",
@@ -12,4 +13,6 @@ __all__ = [
     "load_real_day_files",
     "fetch_pradan_day",
     "PradanUnavailable",
+    "ObservedProduct",
+    "ObservedProductRegistry",
 ]

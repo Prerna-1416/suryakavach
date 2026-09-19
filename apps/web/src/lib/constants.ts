@@ -31,37 +31,15 @@ export function goesClassBg(flux: number): string {
   return GOES_CLASSES[0].bg;
 }
 
-// NOAA R-scale severity mapping from impact index
-export const R_SCALE = [
-  { level: 'R0', min: 0, max: 2, color: '#16a34a', label: 'Minor' },
-  { level: 'R1', min: 2, max: 4, color: '#0284c7', label: 'Minor' },
-  { level: 'R2', min: 4, max: 6, color: '#d97706', label: 'Moderate' },
-  { level: 'R3', min: 6, max: 8, color: '#ea580c', label: 'Strong' },
-  { level: 'R4', min: 8, max: 9, color: '#dc2626', label: 'Severe' },
-  { level: 'R5', min: 9, max: 10, color: '#991b1b', label: 'Extreme' },
-] as const;
+// Presentation-only fallback; thresholds, bands, and weights come from
+// /api/impact/scale so the dashboard cannot drift from the backend model.
+const R_LEVEL_COLORS: Record<string, string> = {
+  R0: '#16a34a', R1: '#0284c7', R2: '#d97706', R3: '#ea580c', R4: '#dc2626', R5: '#991b1b',
+};
 
-export function rLevel(index: number): string {
-  for (let i = R_SCALE.length - 1; i >= 0; i--) {
-    if (index >= R_SCALE[i].min) return R_SCALE[i].level;
-  }
-  return 'R0';
+export function rLevelColor(level: string): string {
+  return R_LEVEL_COLORS[level] ?? 'var(--color-ink-faint)';
 }
-
-export function rLevelColor(index: number): string {
-  for (let i = R_SCALE.length - 1; i >= 0; i--) {
-    if (index >= R_SCALE[i].min) return R_SCALE[i].color;
-  }
-  return R_SCALE[0].color;
-}
-
-// Impact index subscore weights (must sum to 1.0)
-export const IMPACT_WEIGHTS = {
-  peak_sxr: 0.35,
-  hardness: 0.25,
-  impulsivity: 0.20,
-  duration: 0.20,
-} as const;
 
 // Forecast horizon defaults (minutes)
 export const FORECAST_HORIZONS = [5, 10, 20, 40] as const;
