@@ -153,7 +153,7 @@ export default function NowcastBanner({ nowcastState }: NowcastBannerProps) {
             <Metric
               label="R-level"
               value={active?.r_level ?? '—'}
-              tone={active ? rLevelColor(active.index) : undefined}
+              tone={active ? rLevelColor(active.r_level) : undefined}
             />
           </motion.div>
         </div>

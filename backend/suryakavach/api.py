@@ -10,6 +10,7 @@ import time
 from collections import defaultdict, deque
 from contextlib import asynccontextmanager, suppress
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Literal
 
 from fastapi import FastAPI, Query, Request, WebSocket, WebSocketDisconnect
@@ -103,6 +104,10 @@ class BadRequest(Exception):
     """A client-visible 400, distinct from an internal ValueError."""
 
 
+class NotFound(Exception):
+    """A client-visible 404."""
+
+
 class NotReady(Exception):
     """Engines have not finished booting yet."""
 
@@ -153,6 +158,11 @@ async def _rl(_req, _exc):
 @app.exception_handler(BadRequest)
 async def _br(_req, exc: BadRequest):
     return JSONResponse({"data": None, "meta": {"error": str(exc)}}, status_code=400)
+
+
+@app.exception_handler(NotFound)
+async def _nf(_req, exc: NotFound):
+    return JSONResponse({"data": None, "meta": {"error": str(exc)}}, status_code=404)
 
 
 @app.exception_handler(NotReady)
@@ -321,12 +331,113 @@ def impact():
     return runtime.envelope(runtime.impact_current())
 
 
+@app.get("/api/impact/scale")
+def impact_scale():
+    require_ready()
+    return runtime.envelope(runtime.impact_scale())
+
+
 @app.get("/api/alerts")
 def alerts(since: str | None = None):
     require_ready()
     if since and not _DATE_RE.match(since):
         raise BadRequest(f"since must be YYYY-MM-DD or an ISO timestamp; got {since!r}")
     return runtime.envelope(runtime.alerts(since))
+
+
+@app.get("/api/metrics")
+def get_metrics(
+    cohort: str | None = None,
+    run_id: str | None = None,
+):
+    require_ready()
+    conn = runtime.conn
+    if run_id:
+        from suryakavach.db import get_evaluation_run_by_id
+        run_data = get_evaluation_run_by_id(conn, run_id)
+    else:
+        from suryakavach.db import get_latest_evaluation_run
+        run_data = get_latest_evaluation_run(conn, source_cohort=cohort)
+
+    if not run_data:
+        json_p = Path("reports/evaluation_latest.json")
+        if json_p.exists():
+            try:
+                import json
+                file_data = json.loads(json_p.read_text(encoding="utf-8"))
+                if run_id:
+                    if file_data.get("id") == run_id:
+                        run_data = file_data
+                elif cohort:
+                    if file_data.get("source_cohort") == cohort:
+                        run_data = file_data
+                else:
+                    run_data = file_data
+            except Exception:
+                pass
+
+    if not run_data:
+        if run_id:
+            raise NotFound(f"Evaluation run '{run_id}' not found")
+        elif cohort:
+            try:
+                from suryakavach.evaluate import run_evaluation
+                eval_run = run_evaluation(source_cohort=cohort, save_db=True)
+                run_dict = eval_run.to_dict()
+                if run_dict.get("source_cohort") == cohort:
+                    run_data = run_dict
+                else:
+                    raise NotFound(f"Evaluation run for cohort '{cohort}' not found")
+            except Exception:
+                raise NotFound(f"Evaluation run for cohort '{cohort}' not found")
+        else:
+            from suryakavach.evaluate import run_evaluation
+            eval_run = run_evaluation(save_db=True)
+            run_data = eval_run.to_dict()
+
+    created_at_str = run_data.get("created_at", "")
+    age_seconds = 0
+    if created_at_str:
+        try:
+            created_dt = datetime.fromisoformat(created_at_str)
+            age_seconds = max(0, int((datetime.now(UTC) - created_dt).total_seconds()))
+        except Exception:
+            pass
+
+    run_data["age_seconds"] = age_seconds
+    return runtime.envelope(run_data)
+
+
+@app.get("/api/metrics/{run_id}")
+def get_metrics_by_id(run_id: str):
+    require_ready()
+    from suryakavach.db import get_evaluation_run_by_id
+    run_data = get_evaluation_run_by_id(runtime.conn, run_id)
+    if not run_data:
+        json_p = Path("reports/evaluation_latest.json")
+        if json_p.exists():
+            try:
+                import json
+                file_data = json.loads(json_p.read_text(encoding="utf-8"))
+                if file_data.get("id") == run_id:
+                    run_data = file_data
+            except Exception:
+                pass
+
+    if not run_data:
+        raise NotFound(f"Evaluation run '{run_id}' not found")
+
+    created_at_str = run_data.get("created_at", "")
+    age_seconds = 0
+    if created_at_str:
+        try:
+            created_dt = datetime.fromisoformat(created_at_str)
+            age_seconds = max(0, int((datetime.now(UTC) - created_dt).total_seconds()))
+        except Exception:
+            pass
+
+    run_data["age_seconds"] = age_seconds
+    return runtime.envelope(run_data)
 
 
 @app.get("/api/replay/dates")

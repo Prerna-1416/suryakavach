@@ -2,12 +2,10 @@ import { describe, it, expect } from 'vitest';
 import {
   goesClass,
   goesClassColor,
-  rLevel,
   rLevelColor,
   riskLevel,
   riskColor,
   GOES_CLASSES,
-  R_SCALE,
 } from '../lib/constants';
 
 describe('goesClass', () => {
@@ -48,30 +46,11 @@ describe('goesClassColor', () => {
   });
 });
 
-describe('rLevel', () => {
-  it('returns R0 for index below 2', () => {
-    expect(rLevel(0)).toBe('R0');
-    expect(rLevel(1.9)).toBe('R0');
-  });
-
-  it('returns correct level at boundaries', () => {
-    expect(rLevel(2)).toBe('R1');
-    expect(rLevel(4)).toBe('R2');
-    expect(rLevel(6)).toBe('R3');
-    expect(rLevel(8)).toBe('R4');
-    expect(rLevel(9)).toBe('R5');
-  });
-
-  it('returns R5 for index 10', () => {
-    expect(rLevel(10)).toBe('R5');
-  });
-});
-
 describe('rLevelColor', () => {
-  it('maps index to correct color', () => {
-    expect(rLevelColor(0)).toBe(R_SCALE[0].color);
-    expect(rLevelColor(5)).toBe(R_SCALE[2].color);
-    expect(rLevelColor(10)).toBe(R_SCALE[5].color);
+  it('maps an API R-level to a presentation color', () => {
+    expect(rLevelColor('R0')).toBe('#16a34a');
+    expect(rLevelColor('R3')).toBe('#ea580c');
+    expect(rLevelColor('R5')).toBe('#991b1b');
   });
 });
 

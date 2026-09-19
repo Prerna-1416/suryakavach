@@ -1,5 +1,6 @@
 import type { ImpactCurrent } from '../types/api';
-import { rLevelColor, R_SCALE, IMPACT_WEIGHTS } from '../lib/constants';
+import { rLevelColor } from '../lib/constants';
+import { useImpactScale } from '../lib/hooks';
 import Panel from './ui/Panel';
 import Metric from './ui/Metric';
 
@@ -52,11 +53,14 @@ const SECTORS = [
  * /api/impact/current and are rendered, not discarded.
  */
 export default function ImpactGauge({ impact }: ImpactGaugeProps) {
+  const { data: scale } = useImpactScale();
   const index = impact?.index ?? null;
   const rLvl = impact?.r_level ?? 'R0';
   const rInfo = R_INFO[rLvl] ?? R_INFO.R0;
-  const color = index !== null ? rLevelColor(index) : 'var(--color-ink-faint)';
+  const currentBand = scale?.bands.find((band) => band.r_level === rLvl);
+  const color = index !== null ? (currentBand?.color ?? rLevelColor(rLvl)) : 'var(--color-ink-faint)';
   const hasData = index !== null;
+  const subscores = Object.entries(scale?.weights ?? impact?.weights_used ?? {});
 
   return (
     <Panel
@@ -86,11 +90,11 @@ export default function ImpactGauge({ impact }: ImpactGaugeProps) {
 
             {/* R-scale track: one segment per level, filled up to current */}
             <div className="flex w-full h-3 border border-rule overflow-hidden" aria-hidden="true">
-              {R_SCALE.map((rs) => {
+              {(scale?.bands ?? []).map((rs) => {
                 const filled = index !== null && index >= rs.min;
                 return (
                   <div
-                    key={rs.level}
+                    key={rs.r_level}
                     className="flex-1 border-r border-rule last:border-r-0"
                     style={{ backgroundColor: filled ? rs.color : 'transparent' }}
                   />
@@ -98,8 +102,8 @@ export default function ImpactGauge({ impact }: ImpactGaugeProps) {
               })}
             </div>
             <div className="flex justify-between mt-1 text-[9px] font-mono-val text-ink-faint" aria-hidden="true">
-              {R_SCALE.map((rs) => (
-                <span key={rs.level}>{rs.level}</span>
+              {(scale?.bands ?? []).map((rs) => (
+                <span key={rs.r_level}>{rs.r_level}</span>
               ))}
             </div>
             <span className="sr-only">
@@ -121,13 +125,13 @@ export default function ImpactGauge({ impact }: ImpactGaugeProps) {
           <div>
             <div className="text-[10px] uppercase tracking-[0.12em] text-ink-faint mb-2">Fusion subscores</div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              {(Object.keys(IMPACT_WEIGHTS) as (keyof typeof IMPACT_WEIGHTS)[]).map((key) => (
+              {subscores.map(([key, weight]) => (
                 <Metric
                   key={key}
-                  label={`${SUBSCORE_LABELS[key]} · ${Math.round(IMPACT_WEIGHTS[key] * 100)}%`}
+                  label={`${SUBSCORE_LABELS[key] ?? key} · ${Math.round(weight * 100)}%`}
                   value={
-                    impact?.subscores && impact.subscores[key] !== undefined
-                      ? impact.subscores[key].toFixed(3)
+                    impact?.subscores && impact.subscores[key as keyof typeof impact.subscores] !== undefined
+                      ? impact.subscores[key as keyof typeof impact.subscores]!.toFixed(3)
                       : '—'
                   }
                 />

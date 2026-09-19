@@ -24,20 +24,22 @@ UTC = timezone.utc
 
 
 def _ffill(x: np.ndarray) -> np.ndarray:
-    """Forward-fill NaNs, seeding from the series median.
+    """Forward-fill non-finite samples, seeding from the finite-series median.
 
-    An all-NaN input would make ``nanmedian`` emit a RuntimeWarning and return
-    NaN, propagating NaN through every engine downstream; fall back to a tiny
-    positive floor instead so log/ratio maths stays finite.
+    Real product files can contain both missing values and overflow sentinels.
+    An all-non-finite input would otherwise propagate NaN/inf through the
+    detectors; fall back to a tiny positive floor so log/ratio maths and the
+    BOCPD finite-input contract remain valid.
     """
     y = np.asarray(x, dtype=float).copy()
     if y.size == 0:
         return y
-    if np.all(np.isnan(y)):
+    finite = np.isfinite(y)
+    if not np.any(finite):
         return np.full_like(y, 1e-12)
-    last = float(np.nanmedian(y))
+    last = float(np.median(y[finite]))
     for i in range(len(y)):
-        if np.isnan(y[i]):
+        if not np.isfinite(y[i]):
             y[i] = last
         else:
             last = y[i]
@@ -121,6 +123,17 @@ class Runtime:
 
     def _build_preferred_days(self) -> dict[str, dict]:
         days = build_all_days(int(self.cfg["data"]["seed"]))
+        for synthetic_day in days.values():
+            synthetic_day["source_state"] = "synthetic"
+            synthetic_day["provenance"] = {"generator": "synthetic"}
+
+        # Real product files must not silently replace the labelled synthetic
+        # replay set.  L1 count-rate products are useful diagnostics, but are
+        # not calibrated physical flux and contain no ground-truth flare
+        # labels.  An explicitly calibrated, labelled import can be enabled
+        # only after it satisfies both contracts.
+        if self.cfg["data"].get("source_state") != "observed_calibrated":
+            return days
         real_root = self.data_path / "real_days"
         if not real_root.is_dir():
             return days
@@ -133,7 +146,10 @@ class Runtime:
                 real_day = load_real_day_files(day, src_dir)
             except (FileNotFoundError, OSError, ValueError):
                 continue
-            real_day["truth"] = []
+            if not real_day.get("truth"):
+                continue
+            real_day["source_state"] = "observed_calibrated"
+            real_day["provenance"] = {"source": "real_days", "calibration": "configured"}
             days[day] = real_day
         return days
 
@@ -142,6 +158,8 @@ class Runtime:
         yc = []
         ym = []
         for day in self.days.values():
+            if day.get("source_state") not in {"synthetic", "observed_calibrated"} or not day.get("truth"):
+                continue
             sxr = _ffill(day["solexs"])
             hxr = _ffill(day["hel1os"])
             onsets = [int((fl.onset - day["t0"]).total_seconds() // 60) for fl in day["truth"]]
@@ -159,6 +177,8 @@ class Runtime:
         from suryakavach.engines.forecast import vectorize
 
         X = np.array([vectorize(row) if isinstance(row, dict) else row for row in xs], dtype=float)
+        if len(X) == 0:
+            raise RuntimeError("no labelled calibrated days are available to fit the forecast")
         self.hazard.fit(X, np.array(yc), np.array(ym))
 
     def _run_all_nowcasts(self) -> None:
@@ -236,6 +256,38 @@ class Runtime:
     def available_dates(self) -> list[str]:
         return sorted(self.days.keys())
 
+    def source_state(self) -> str:
+        """State of the current replay data, never inferred from a filename."""
+        return str(self.day().get("source_state", "synthetic"))
+
+    def impact_scale(self) -> dict:
+        """The sole API contract for impact bands and configured weights."""
+        lower = 0.0
+        bands = []
+        for source in self.cfg["severity_bands"]:
+            upper = float(source["max"])
+            bands.append(
+                {
+                    "min": lower,
+                    "max": upper,
+                    "band": str(source["band"]),
+                    "r_level": str(source["r_level"]),
+                    "color": str(source.get("color", "#93a0b6")),
+                }
+            )
+            lower = upper
+        weights = compute_impact(
+            0.0, 0.0, 0.0, 1.0, self.cfg["impact"]["weights"], self.cfg["impact"]["suit_available"]
+        )["weights_used"]
+        state = self.source_state()
+        return {
+            "version": str(self.cfg.get("impact_scale", {}).get("version", "unversioned")),
+            "bands": bands,
+            "weights": weights,
+            "source_state": state,
+            "operational": state == "observed_calibrated",
+        }
+
     def day(self) -> dict:
         try:
             return self.days[self.event_date]
@@ -268,6 +320,7 @@ class Runtime:
         out = {
             "status": "ok" if ok else "degraded",
             "data_last_timestamp": self._cursor_iso(),
+            "source_state": self.source_state() if self.days else None,
             "engines": engines,
             "mode": self.mode,
             "playing": self.playing,
@@ -460,6 +513,19 @@ class Runtime:
         return pred
 
     def impact_current(self) -> dict:
+        if self.source_state() == "observed_uncalibrated" and self.cfg["calibration"].get(
+            "require_calibrated_flux_for_impact", True
+        ):
+            return {
+                "index": None,
+                "band": "UNAVAILABLE",
+                "r_level": "—",
+                "g_level": "—",
+                "s_level": "—",
+                "subscores": {},
+                "weights_used": {},
+                "note": "Impact is unavailable: observed count-rate data has no approved flux calibration.",
+            }
         nc = self._nowcast_until(self.cursor)
         if not nc.events:
             empty = compute_impact(
@@ -473,6 +539,7 @@ class Runtime:
                 "g_level": "G0",
                 "s_level": "S0",
                 "subscores": empty["subscores"],
+                "weights_used": empty["weights_used"],
                 "note": "No active/recent flare in window.",
             }
         ev = nc.events[-1]
@@ -501,6 +568,7 @@ class Runtime:
             "g_level": "G0",
             "s_level": "S0",
             "subscores": impact["subscores"],
+            "weights_used": impact["weights_used"],
             "flare_id": ev.id,
             "note": "SUIT NUV unavailable in v1 cache; weight renormalized.",
         }
@@ -774,7 +842,7 @@ class Runtime:
                 ev = nc.events[-1]
                 self._emit_alert("flare_peak", ev.severity_band or "R2", ev.id, f"Peak {ev.class_label} {ts}", ts)
             impact = self.impact_current()
-            if impact["index"] >= prev_idx + 1.0 and impact["index"] >= 4:
+            if impact["index"] is not None and impact["index"] >= prev_idx + 1.0 and impact["index"] >= 4:
                 self._emit_alert(
                     "severity_increase",
                     impact["band"],

@@ -42,8 +42,11 @@ class BOCPD:
         self._reset()
 
     def update(self, x: float) -> float:
+        x_val = float(x)
+        if not np.isfinite(x_val):
+            raise ValueError(f"BOCPD update requires finite float value, got {x}")
         t = min(self.t, self.max_run)
-        pred = self._student_pdf(x, self.mean, self.kappa, self.alpha, self.beta)
+        pred = self._student_pdf(x_val, self.mean, self.kappa, self.alpha, self.beta)
         pred = np.clip(pred, 1e-300, None)
 
         growth = self.R * pred * (1.0 - self.hazard)
@@ -74,9 +77,14 @@ class BOCPD:
         return self.last_cp
 
     def run(self, xs: NDArray[np.float64]) -> NDArray[np.float64]:
+        arr = np.asarray(xs, dtype=np.float64)
+        if arr.ndim != 1:
+            raise ValueError(f"BOCPD.run requires 1D array input, got shape {arr.shape}")
+        if not np.all(np.isfinite(arr)):
+            raise ValueError("BOCPD.run requires all input elements to be finite float values")
         self.reset()
-        out = np.empty(len(xs), dtype=np.float64)
-        for i, v in enumerate(xs):
+        out = np.empty(len(arr), dtype=np.float64)
+        for i, v in enumerate(arr):
             out[i] = self.update(float(v))
         return out
 

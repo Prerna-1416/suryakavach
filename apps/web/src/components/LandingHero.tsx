@@ -302,7 +302,7 @@ export default function LandingHero() {
               label="Flare impact index"
               value={impactIndex !== null ? impactIndex.toFixed(1) : '—'}
               unit={`/ 10 · ${impact?.r_level ?? ''}`}
-              tone={impactIndex !== null ? rLevelColor(impactIndex) : undefined}
+              tone={impactIndex !== null ? rLevelColor(impact?.r_level ?? 'R0') : undefined}
             />
           </div>
 

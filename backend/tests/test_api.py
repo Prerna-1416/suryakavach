@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 
 def test_health_endpoint(client):
     response = client.get("/api/health")
@@ -59,6 +61,13 @@ def test_forecast_and_impact(client):
     res_imp = client.get("/api/impact/current")
     assert res_imp.status_code == 200
     assert "index" in res_imp.json()["data"]
+
+    res_scale = client.get("/api/impact/scale")
+    assert res_scale.status_code == 200
+    scale = res_scale.json()["data"]
+    assert scale["version"] == "2026-09-19-v1"
+    assert [band["r_level"] for band in scale["bands"]] == ["R0", "R1", "R2", "R3", "R4", "R5"]
+    assert sum(scale["weights"].values()) == pytest.approx(1.0)
 
 
 def test_replay_controls(client):
@@ -164,3 +173,25 @@ def test_ws_live(client):
     with client.websocket_connect("/ws/live") as websocket:
         data = websocket.receive_json()
         assert "clock" in data or "nowcast_state" in data
+
+
+def test_metrics_endpoint(client):
+    res = client.get("/api/metrics")
+    assert res.status_code == 200
+    jdata = res.json()
+    assert "data" in jdata
+    data = jdata["data"]
+    assert "id" in data
+    assert "source_cohort" in data
+    assert "config_hash" in data
+    assert "detection_metrics" in data
+    assert "horizon_brier_scores" in data
+
+    run_id = data["id"]
+    res_id = client.get(f"/api/metrics/{run_id}")
+    assert res_id.status_code == 200
+    assert res_id.json()["data"]["id"] == run_id
+
+    res_404 = client.get("/api/metrics/non-existent-run-id-12345")
+    assert res_404.status_code in (400, 404)
+

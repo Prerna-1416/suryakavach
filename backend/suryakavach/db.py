@@ -49,9 +49,22 @@ CREATE TABLE IF NOT EXISTS replay_sessions (
   status TEXT NOT NULL,
   cursor TEXT
 );
+CREATE TABLE IF NOT EXISTS evaluation_runs (
+  id TEXT PRIMARY KEY,
+  created_at TEXT NOT NULL,
+  source_cohort TEXT NOT NULL,
+  split_id TEXT NOT NULL,
+  config_hash TEXT NOT NULL,
+  dataset_hash TEXT NOT NULL,
+  code_revision TEXT NOT NULL,
+  model_version TEXT NOT NULL,
+  metrics_json TEXT NOT NULL,
+  is_approved INTEGER NOT NULL DEFAULT 0
+);
 CREATE INDEX IF NOT EXISTS idx_flares_onset ON flares (onset);
 CREATE INDEX IF NOT EXISTS idx_flares_method ON flares (detection_method);
 CREATE INDEX IF NOT EXISTS idx_alerts_ts ON alerts (ts);
+CREATE INDEX IF NOT EXISTS idx_eval_runs_cohort ON evaluation_runs (source_cohort);
 """
 
 # PostgREST returns at most 1000 rows unless a range is requested. The synthetic
@@ -169,6 +182,22 @@ _RE_REPLAY_INSERT = re.compile(
 _RE_REPLAY_UPDATE = re.compile(
     r"^\s*UPDATE\s+replay_sessions\s+SET\s+status\s*=\s*\?,\s*cursor\s*=\s*\?\s+WHERE\s+id\s*=\s*\?", re.I
 )
+_RE_EVAL_RUN_UPSERT = re.compile(
+    r"^\s*INSERT\s+OR\s+REPLACE\s+INTO\s+evaluation_runs\s*\(([^)]+)\)\s+VALUES\s*\(([^)]+)\)", re.I
+)
+_RE_EVAL_RUN_BY_ID = re.compile(
+    r"^\s*SELECT\s+\*\s+FROM\s+evaluation_runs\s+WHERE\s+id\s*=\s*\?\s+LIMIT\s+1", re.I
+)
+_RE_EVAL_RUN_BY_COHORT = re.compile(
+    r"^\s*SELECT\s+\*\s+FROM\s+evaluation_runs\s+WHERE\s+source_cohort\s*=\s*\?\s+ORDER\s+BY\s+created_at\s+DESC\s+LIMIT\s+1", re.I
+)
+_RE_EVAL_RUN_LATEST = re.compile(
+    r"^\s*SELECT\s+\*\s+FROM\s+evaluation_runs\s+ORDER\s+BY\s+created_at\s+DESC\s+LIMIT\s+1", re.I
+)
+_RE_EVAL_RUN_LIST = re.compile(
+    r"^\s*SELECT\s+\*\s+FROM\s+evaluation_runs\s+ORDER\s+BY\s+created_at\s+DESC\s+LIMIT\s+\?", re.I
+)
+
 
 
 class _SupaWrapper:
@@ -252,6 +281,44 @@ class _SupaWrapper:
             )
             return _SupaCursor(res.data if res.data else [])
 
+        if _RE_EVAL_RUN_UPSERT.match(s):
+            m = _RE_EVAL_RUN_UPSERT.match(s)
+            cols = _split_cols(m.group(1))
+            data = dict(zip(cols, params))
+            res = self._sb.table("evaluation_runs").upsert(data).execute()
+            return _SupaCursor(res.data if res.data else [data])
+
+        if _RE_EVAL_RUN_BY_ID.match(s):
+            res = self._sb.table("evaluation_runs").select("*").eq("id", params[0]).limit(1).execute()
+            return _SupaCursor(list(res.data) if res.data else [])
+
+        if _RE_EVAL_RUN_BY_COHORT.match(s):
+            res = (
+                self._sb.table("evaluation_runs")
+                .select("*")
+                .eq("source_cohort", params[0])
+                .order("created_at", desc=True)
+                .limit(1)
+                .execute()
+            )
+            return _SupaCursor(list(res.data) if res.data else [])
+
+        if _RE_EVAL_RUN_LATEST.match(s):
+            res = self._sb.table("evaluation_runs").select("*").order("created_at", desc=True).limit(1).execute()
+            return _SupaCursor(list(res.data) if res.data else [])
+
+        if _RE_EVAL_RUN_LIST.match(s):
+            limit_val = int(params[0]) if params else 10
+            res = (
+                self._sb.table("evaluation_runs")
+                .select("*")
+                .order("created_at", desc=True)
+                .limit(limit_val)
+                .execute()
+            )
+            return _SupaCursor(list(res.data) if res.data else [])
+
+
         raise ValueError(f"Unsupported SQL for Supabase shim: {s}")
 
     def executemany(self, sql: str, seq_of_params) -> None:
@@ -305,3 +372,82 @@ def connect(path: Path) -> "_SupaWrapper | _LockedConnection":
     if os.environ.get("USE_SUPABASE", "0") == "1":
         return _SupaWrapper()
     return _sqlite_connect(path)
+
+
+def save_evaluation_run(conn: Any, run_data: dict[str, Any]) -> None:
+    """Persists an evaluation run record into the database."""
+    import json
+    sql = """
+    INSERT OR REPLACE INTO evaluation_runs (
+        id, created_at, source_cohort, split_id, config_hash,
+        dataset_hash, code_revision, model_version, metrics_json, is_approved
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """
+    metrics_json = json.dumps(run_data)
+    conn.execute(
+        sql,
+        (
+            run_data["id"],
+            run_data["created_at"],
+            run_data["source_cohort"],
+            run_data["split_id"],
+            run_data["config_hash"],
+            run_data["dataset_hash"],
+            run_data["code_revision"],
+            run_data["model_version"],
+            metrics_json,
+            run_data.get("is_approved", 0),
+        ),
+    )
+    conn.commit()
+
+
+def get_latest_evaluation_run(conn: Any, source_cohort: str | None = None) -> dict[str, Any] | None:
+    """Retrieves the most recent evaluation run record from the database."""
+    import json
+    if source_cohort:
+        sql = "SELECT * FROM evaluation_runs WHERE source_cohort = ? ORDER BY created_at DESC LIMIT 1"
+        res = conn.execute(sql, (source_cohort,))
+    else:
+        sql = "SELECT * FROM evaluation_runs ORDER BY created_at DESC LIMIT 1"
+        res = conn.execute(sql)
+    row = res.fetchone()
+    if not row:
+        return None
+    row_dict = dict(row) if not isinstance(row, dict) else row
+    metrics_raw = row_dict.get("metrics_json", "{}")
+    if isinstance(metrics_raw, str):
+        return json.loads(metrics_raw)
+    return metrics_raw
+
+
+def get_evaluation_run_by_id(conn: Any, run_id: str) -> dict[str, Any] | None:
+    """Retrieves a specific evaluation run by ID."""
+    import json
+    sql = "SELECT * FROM evaluation_runs WHERE id = ? LIMIT 1"
+    res = conn.execute(sql, (run_id,))
+    row = res.fetchone()
+    if not row:
+        return None
+    row_dict = dict(row) if not isinstance(row, dict) else row
+    metrics_raw = row_dict.get("metrics_json", "{}")
+    if isinstance(metrics_raw, str):
+        return json.loads(metrics_raw)
+    return metrics_raw
+
+
+def list_evaluation_runs(conn: Any, limit: int = 10) -> list[dict[str, Any]]:
+    """Lists recent evaluation runs from the database."""
+    import json
+    sql = "SELECT * FROM evaluation_runs ORDER BY created_at DESC LIMIT ?"
+    res = conn.execute(sql, (limit,))
+    rows = res.fetchall()
+    out = []
+    for r in rows:
+        r_dict = dict(r) if not isinstance(r, dict) else r
+        metrics_raw = r_dict.get("metrics_json", "{}")
+        parsed = json.loads(metrics_raw) if isinstance(metrics_raw, str) else metrics_raw
+        out.append(parsed)
+    return out
+
+

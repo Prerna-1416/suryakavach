@@ -90,12 +90,13 @@ const ImpactSubscoresSchema = z.object({
 });
 
 const ImpactCurrentSchema = z.object({
-  index: z.number(),
+  index: z.number().nullable(),
   band: z.string(),
   r_level: z.string(),
   g_level: z.string(),
   s_level: z.string(),
-  subscores: ImpactSubscoresSchema,
+  subscores: ImpactSubscoresSchema.partial(),
+  weights_used: ImpactSubscoresSchema.partial(),
   flare_id: z.string().optional(),
   note: z.string(),
 });
@@ -217,6 +218,7 @@ const fixtureImpact: ImpactCurrent = {
   g_level: 'G1',
   s_level: 'S1',
   subscores: { peak_sxr: 6.2, hardness: 5.1, impulsivity: 4.8, duration: 6.5 },
+  weights_used: { peak_sxr: 0.35, hardness: 0.25, impulsivity: 0.2, duration: 0.2 },
   flare_id: 'FLR-001',
   note: 'Moderate space weather impact expected.',
 };
@@ -397,3 +399,102 @@ describe('ReplayDates contract', () => {
     expect(() => ReplayDatesSchema.parse({ dates: [] })).not.toThrow();
   });
 });
+
+const DetectionMetricsSchema = z.object({
+  tp: z.number(),
+  fp: z.number(),
+  fn: z.number(),
+  tn: z.number(),
+  tss: z.number(),
+  hss: z.number(),
+  far: z.number(),
+  precision: z.number(),
+  recall: z.number(),
+  f1: z.number(),
+});
+
+const LeadTimeStatsSchema = z.object({
+  mean: z.number(),
+  median: z.number(),
+  std: z.number(),
+  p25: z.number(),
+  p75: z.number(),
+  min_val: z.number(),
+  max_val: z.number(),
+});
+
+const CalibrationPointSchema = z.object({
+  bin_center: z.number(),
+  prob_pred: z.number(),
+  prob_true: z.number(),
+  count: z.number(),
+});
+
+const CalibrationCurveSchema = z.object({
+  points: z.array(CalibrationPointSchema),
+  brier_score: z.number(),
+  brier_skill_score: z.number(),
+});
+
+const ConfidenceIntervalSchema = z.object({
+  metric_name: z.string(),
+  point_estimate: z.number(),
+  ci_lower: z.number(),
+  ci_upper: z.number(),
+  confidence_level: z.number(),
+});
+
+const EvaluationRunSchema = z.object({
+  id: z.string(),
+  created_at: z.string(),
+  source_cohort: z.string(),
+  split_id: z.string(),
+  config_hash: z.string(),
+  dataset_hash: z.string(),
+  code_revision: z.string(),
+  model_version: z.string(),
+  detection_metrics: DetectionMetricsSchema,
+  lead_time_stats: LeadTimeStatsSchema,
+  horizon_brier_scores: z.record(z.string(), z.number()),
+  confidence_intervals: z.record(z.string(), ConfidenceIntervalSchema),
+  calibration_curve: CalibrationCurveSchema,
+  sample_count: z.number(),
+  age_seconds: z.number().optional(),
+});
+
+describe('EvaluationRun contract', () => {
+  it('validates evaluation metrics payload structure', () => {
+    const fixtureRun = {
+      id: 'run_20260919_050000_123456',
+      created_at: '2026-09-19T05:00:00Z',
+      source_cohort: 'synthetic',
+      split_id: 'synthetic-demo',
+      config_hash: '58eee72355ec89ac',
+      dataset_hash: '2fc1e6eca343fa0b',
+      code_revision: 'ee5fbc2d25a2f3b6',
+      model_version: 'bocpd_neupert_v1',
+      detection_metrics: {
+        tp: 29, fp: 54, fn: 1, tn: 48,
+        tss: 0.437, hss: 0.269, far: 0.651,
+        precision: 0.349, recall: 0.967, f1: 0.513
+      },
+      lead_time_stats: {
+        mean: 18.3, median: 19.0, std: 5.9, p25: 14.0, p75: 23.0, min_val: 8.0, max_val: 33.0
+      },
+      horizon_brier_scores: { '5': 0.0589, '10': 0.0636, '20': 0.0663, '40': 0.0664 },
+      confidence_intervals: {
+        tss: { metric_name: 'tss', point_estimate: 0.437, ci_lower: 0.279, ci_upper: 0.592, confidence_level: 0.95 }
+      },
+      calibration_curve: {
+        points: [{ bin_center: 0.05, prob_pred: 0.0043, prob_true: 0.0523, count: 15637 }],
+        brier_score: 0.0578,
+        brier_skill_score: -0.0464
+      },
+      sample_count: 11,
+      age_seconds: 120
+    };
+
+    expect(() => EvaluationRunSchema.parse(fixtureRun)).not.toThrow();
+  });
+});
+

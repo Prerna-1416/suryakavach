@@ -6,6 +6,7 @@ import type {
   NowcastState,
   ForecastData,
   ImpactCurrent,
+  ImpactScale,
   HealthStatus,
   CatalogueData,
   FlareDetail,
@@ -14,6 +15,7 @@ import type {
   ReplayControlBody,
   ReplayStartResult,
   Alert,
+  EvaluationRunDto,
 } from '../types/api';
 
 export function useStreams(windowSize: number) {
@@ -48,6 +50,14 @@ export function useImpact() {
     queryFn: () => api.get<ImpactCurrent>('/api/impact/current'),
     staleTime: 10_000,
     refetchInterval: 10_000,
+  });
+}
+
+export function useImpactScale() {
+  return useQuery({
+    queryKey: ['impactScale'],
+    queryFn: () => api.get<ImpactScale>('/api/impact/scale'),
+    staleTime: Infinity,
   });
 }
 
@@ -91,6 +101,14 @@ export function useAlerts() {
     queryFn: () => api.get<Alert[]>('/api/alerts'),
     staleTime: 10_000,
     refetchInterval: 10_000,
+  });
+}
+
+export function useMetrics(runId?: string) {
+  return useQuery({
+    queryKey: ['metrics', runId],
+    queryFn: () => api.get<EvaluationRunDto>(runId ? `/api/metrics/${runId}` : '/api/metrics'),
+    staleTime: 60_000,
   });
 }
 

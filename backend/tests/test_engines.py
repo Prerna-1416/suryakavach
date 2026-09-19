@@ -8,6 +8,7 @@ from suryakavach.engines.bocpd import BOCPD
 from suryakavach.engines.evt import intensity_quantiles
 from suryakavach.engines.forecast import DiscreteHazard, rolling_features, vectorize
 from suryakavach.engines.impact import compute_impact, map_severity
+from suryakavach.engines.calibration import fit_log_flux_calibration
 from suryakavach.engines.neupert import neupert_correlation
 from suryakavach.engines.nowcast import run_nowcast
 from suryakavach.goes import class_letter, class_meets_min, goes_class
@@ -41,6 +42,16 @@ def test_bocpd():
     around_shift = cps[50:56]
     assert np.mean(around_shift) > np.mean(baseline) * 5
     assert np.max(around_shift) > 0.5
+
+
+def test_runtime_ffill_removes_nan_and_infinity_before_detection():
+    """External telemetry must satisfy BOCPD's finite-input contract."""
+    from suryakavach.runtime import _ffill
+
+    filled = _ffill(np.array([1.0, np.nan, np.inf, 4.0, -np.inf]))
+
+    assert np.all(np.isfinite(filled))
+    assert filled.tolist() == [1.0, 1.0, 1.0, 4.0, 4.0]
 
 
 def test_forecast_hazard():
@@ -88,3 +99,19 @@ def test_run_nowcast():
     res = run_nowcast(sxr, hxr, cfg)
     assert len(res.posterior) == 1440
     assert len(res.events) > 0
+
+
+def test_count_rate_flux_calibration_requires_matched_reference_and_preserves_units():
+    counts = np.linspace(10.0, 1000.0, 30)
+    expected_flux = 2e-8 * counts**1.2
+    fitted = fit_log_flux_calibration(counts, expected_flux, "matched-goes-demo")
+
+    assert fitted.sample_count == 30
+    assert fitted.rmse_log10 < 1e-10
+    assert np.allclose(fitted.apply([100.0]), [2e-8 * 100.0**1.2])
+    assert fitted.metadata()["output_unit"] == "W/m2"
+
+
+def test_count_rate_flux_calibration_rejects_insufficient_matches():
+    with pytest.raises(ValueError, match="matched positive samples"):
+        fit_log_flux_calibration([1.0, 2.0], [1e-8, 2e-8], "too-small")

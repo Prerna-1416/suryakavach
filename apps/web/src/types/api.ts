@@ -86,14 +86,31 @@ export interface ImpactSubscores {
 }
 
 export interface ImpactCurrent {
-  index: number;
+  index: number | null;
   band: string;
   r_level: string;
   g_level: string;
   s_level: string;
-  subscores: ImpactSubscores;
+  subscores: Partial<ImpactSubscores>;
+  weights_used: Partial<ImpactSubscores>;
   flare_id?: string;
   note: string;
+}
+
+export interface ImpactScaleBand {
+  min: number;
+  max: number;
+  band: string;
+  r_level: string;
+  color: string;
+}
+
+export interface ImpactScale {
+  version: string;
+  bands: ImpactScaleBand[];
+  weights: Partial<ImpactSubscores>;
+  source_state: 'synthetic' | 'observed_uncalibrated' | 'observed_calibrated' | string;
+  operational: boolean;
 }
 
 export interface CatalogueFlare {
@@ -189,4 +206,79 @@ export interface FlareDetail extends CatalogueFlare {
   };
   subscores: ImpactSubscores;
   confidence?: string;
+}
+
+export interface DetectionMetricsDto {
+  tp: number;
+  fp: number;
+  fn: number;
+  tn: number;
+  tss: number;
+  hss: number;
+  far: number;
+  precision: number;
+  recall: number;
+  f1: number;
+}
+
+export interface LeadTimeStatsDto {
+  mean: number;
+  median: number;
+  std: number;
+  p25: number;
+  p75: number;
+  min_val: number;
+  max_val: number;
+}
+
+export interface CalibrationPointDto {
+  bin_center: number;
+  prob_pred: number;
+  prob_true: number;
+  count: number;
+}
+
+export interface CalibrationCurveDto {
+  points: CalibrationPointDto[];
+  brier_score: number;
+  brier_skill_score: number;
+}
+
+export interface FailureSliceMetricsDto {
+  slice_name: string;
+  sample_count: number;
+  tp: number;
+  fp: number;
+  fn: number;
+  tn: number;
+  tss: number;
+  hss: number;
+  far: number;
+}
+
+export interface ConfidenceIntervalDto {
+  metric_name: string;
+  point_estimate: number;
+  ci_lower: number;
+  ci_upper: number;
+  confidence_level: number;
+}
+
+export interface EvaluationRunDto {
+  id: string;
+  created_at: string;
+  source_cohort: 'synthetic' | 'observed_uncalibrated' | 'observed_calibrated' | string;
+  split_id: string;
+  config_hash: string;
+  dataset_hash: string;
+  code_revision: string;
+  model_version: string;
+  detection_metrics: DetectionMetricsDto;
+  lead_time_stats: LeadTimeStatsDto;
+  horizon_brier_scores: Record<string, number>;
+  confidence_intervals: Record<string, ConfidenceIntervalDto>;
+  calibration_curve: CalibrationCurveDto;
+  failure_slices: Record<string, FailureSliceMetricsDto>;
+  sample_count: number;
+  age_seconds: number;
 }
