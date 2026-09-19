@@ -174,7 +174,7 @@ The SURYAKAVACH API uses UTC ISO-8601 timestamps and a `{ data, meta }` response
 
 | Area | Owner |
 | --- | --- |
-| Architecture, BOCPD, integration | Vasu Gera |
+| Architecture, BOCPD, integration | Akshat Raj |
 | Data ingestion, PRADAN cache, simulation stream, Docker | Akshat Raj |
 | Survival model, EVT, calibration | Akshita Guleria |
 | FastAPI, WebSockets, replay, alerts | Prerna |
