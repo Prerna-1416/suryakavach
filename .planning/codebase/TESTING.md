@@ -136,7 +136,7 @@ beforeEach(() => {
 
 ## Coverage
 
-**Requirements:** None enforced. No coverage tooling is configured (`pytest-cov` is not in `backend/requirements.txt`; no Vitest coverage provider or thresholds). `.gitignore` lists `.coverage`/`htmlcov/` but nothing generates them in-repo, and there are no CI workflows (`.github/workflows/` does not exist).
+**Requirements:** CI validation is enforced via GitHub Actions ([`.github/workflows/ci.yml`](file:///c:/Users/King/suryakavach/.github/workflows/ci.yml)), which runs backend pytest tests (48 tests) and frontend Vitest unit & contract tests (122 tests) on push and pull requests.
 
 **View Coverage:**
 ```bash

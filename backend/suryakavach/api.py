@@ -380,20 +380,9 @@ def get_metrics(
         if run_id:
             raise NotFound(f"Evaluation run '{run_id}' not found")
         elif cohort:
-            try:
-                from suryakavach.evaluate import run_evaluation
-                eval_run = run_evaluation(source_cohort=cohort, save_db=True)
-                run_dict = eval_run.to_dict()
-                if run_dict.get("source_cohort") == cohort:
-                    run_data = run_dict
-                else:
-                    raise NotFound(f"Evaluation run for cohort '{cohort}' not found")
-            except Exception:
-                raise NotFound(f"Evaluation run for cohort '{cohort}' not found")
+            raise NotFound(f"Evaluation run for cohort '{cohort}' not found")
         else:
-            from suryakavach.evaluate import run_evaluation
-            eval_run = run_evaluation(save_db=True)
-            run_data = eval_run.to_dict()
+            raise NotFound("No evaluation run available")
 
     created_at_str = run_data.get("created_at", "")
     age_seconds = 0

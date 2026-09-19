@@ -71,6 +71,13 @@ class PradanSession:
         """Authenticate through the dynamic ISSDC Keycloak login form."""
         login_page = self.client.get(self.base_url + _LOGIN_ENTRYPOINT)
         action, payload = _login_form(login_page.text, str(login_page.url))
+        parsed_action = urlparse(action)
+        parsed_base = urlparse(self.base_url)
+        allowed_hosts = {parsed_base.hostname, "pradan.issdc.gov.in", "issdc.gov.in", "idp.issdc.gov.in"}
+        if parsed_action.scheme != "https" or (parsed_action.hostname and parsed_action.hostname not in allowed_hosts):
+            raise PradanAuthenticationError(
+                f"Invalid or insecure PRADAN login action URL: '{action}'"
+            )
         payload.update({"username": self.username, "password": self.password, "login": "Log In"})
         response = self.client.post(action, data=payload)
         if not _is_authenticated(response, self.base_url):

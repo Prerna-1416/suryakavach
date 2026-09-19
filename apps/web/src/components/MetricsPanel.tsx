@@ -10,7 +10,7 @@ interface CohortRowProps {
   fp?: number;
   fn?: number;
   targetTss?: number;
-  ciTss?: { ci_lower: number; ci_upper: number };
+  ciTss?: { ci_lower: number; ci_upper: number; confidence_level?: number };
 }
 
 function CohortRow({ cohort }: { cohort: CohortRowProps }) {
@@ -112,14 +112,14 @@ export default function MetricsPanel() {
           Run: <code className="text-accent">{run.id}</code> ({run.source_cohort})
         </span>
       }
-      tone={run.source_cohort === 'synthetic' ? '#d97706' : '#16a34a'}
+      tone={run.source_cohort === 'observed_calibrated' ? '#16a34a' : '#d97706'}
     >
       <div className="space-y-6">
         {/* Cohort Provenance Banner */}
         <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 text-xs font-mono-val border border-rule bg-surface-wash">
           <div className="flex items-center gap-3">
             <span className={`px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
-              run.source_cohort === 'synthetic' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+              run.source_cohort === 'observed_calibrated' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
             }`}>
               {run.source_cohort}
             </span>
@@ -146,7 +146,7 @@ export default function MetricsPanel() {
               <thead>
                 <tr className="text-[10px] uppercase tracking-[0.1em] text-ink-faint text-left">
                   <th scope="col" className="px-3 py-2 font-semibold">Cohort / Slice</th>
-                  <th scope="col" className="px-3 py-2 font-semibold text-right">TSS (95% CI)</th>
+                  <th scope="col" className="px-3 py-2 font-semibold text-right">TSS ({cis?.tss?.confidence_level ? `${Math.round(cis.tss.confidence_level * 100)}%` : '95%'} CI)</th>
                   <th scope="col" className="px-3 py-2 font-semibold text-right">HSS</th>
                   <th scope="col" className="px-3 py-2 font-semibold text-right">FAR</th>
                   <th scope="col" className="px-3 py-2 font-semibold text-right" title="True positives / false positives / false negatives">TP / FP / FN</th>

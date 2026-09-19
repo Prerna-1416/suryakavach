@@ -6,9 +6,9 @@
 
 **Space-weather data sources:**
 - ISRO PRADAN / ISSDC (Aditya-L1 SoLEXS + HEL1OS L1 products) - Primary intended upstream data source for real observations.
-  - SDK/Client: No SDK; hand-rolled file reader in `backend/suryakavach/ingest/pradan.py` (`csv.DictReader`, optional FITS naming convention).
-  - Auth: The official high-cadence products sit behind the authenticated PRADAN/ISSDC data-access flow (account + session cookie). No credential env var is wired yet - `fetch_pradan_day()` currently raises `PradanUnavailable` (see `backend/suryakavach/ingest/pradan.py:118-132`).
-  - Operational path today: cached product files dropped on disk at `<data.cache_path>/real_days/<YYYY-MM-DD>/` (CSV named `solexs*sxr*.csv` / `hel1os*hxr*.csv`, or `.fits`), consumed by `load_real_day_files()`. `Runtime._build_preferred_days()` in `backend/suryakavach/runtime.py:122-136` prefers real days over synthetic when that directory exists.
+  - SDK/Client: Authenticated dynamic Keycloak session in `backend/suryakavach/ingest/pradan_session.py`, catalogue downloader in `pradan_catalogue.py`, raw product SQLite registry in `registry.py`, and CLI in `cli.py`.
+  - Auth: `PRADAN_USERNAME` and `PRADAN_PASSWORD` environment variables drive `PradanSession.from_env()`. Legacy `fetch_pradan_day()` remains a stub raising `PradanUnavailable` when standalone credentials are missing.
+  - Operational path today: Product archives downloaded via `python -m suryakavach.ingest.cli` are stored under `<data.cache_path>/real_days/<YYYY-MM-DD>/` and registered in `observed_products`. `Runtime._build_preferred_days()` prefers calibrated real days over synthetic.
   - Fallback: synthetic generator `backend/suryakavach/ingest/synthetic.py` (`build_all_days`, seeded by `data.seed: 42`).
 - NOAA GOES XRS classification - Represented only as local unit-scale logic, not a live feed. `backend/suryakavach/goes.py` implements `goes_class()` (A/B/C/M/X bands), `class_letter()`, `class_meets_min()`, and `iso()`. No HTTP fetch to NOAA exists.
   - README (`README.md:214-219`) lists cached GOES XRS and NOAA flare-event data as a required future ingestion target, not a present integration.
@@ -29,8 +29,8 @@
   - Connection: `SUPABASE_URL`; auth via `SUPABASE_SERVICE_ROLE_KEY`.
   - Client factory: `backend/suryakavach/supabase_db.py` (`create_client`, module-level singleton with `reset_supabase()`).
   - Selected when `USE_SUPABASE=1` in `backend/suryakavach/db.py:302-307`.
-  - Tables: `flares`, `alerts`, `replay_sessions` (DDL for both stores is in `backend/suryakavach/db.py`; README `README.md:101-139` documents the Postgres variant, including `"end"` as a reserved-word quoted column).
-  - Query translation: `_SupaWrapper` in `backend/suryakavach/db.py:174-295` pattern-matches the fixed set of SQL statements emitted by `runtime.py` and re-issues them as PostgREST calls - any new SQL shape raises `ValueError: Unsupported SQL for Supabase shim`. Catalogue reads use an explicit `limit(5000)` (`_CATALOGUE_MAX_ROWS`) because PostgREST caps unbounded selects at 1000 rows.
+  - Tables: `flares`, `alerts`, `replay_sessions`, `evaluation_runs` (DDL for both stores is in `backend/suryakavach/db.py`; Postgres DDL includes `evaluation_runs` metrics JSON payloads).
+  - Query translation: `_SupaWrapper` in `backend/suryakavach/db.py` pattern-matches SQL queries emitted by `runtime.py` and `evaluate.py` and re-issues them as PostgREST calls - any new SQL shape raises `ValueError: Unsupported SQL for Supabase shim`. Catalogue reads use an explicit `limit(5000)` (`_CATALOGUE_MAX_ROWS`) because PostgREST caps unbounded selects at 1000 rows.
   - Write batching: `batch_flares()` / `flush_flares()` buffer flare upserts into 200-row chunks to avoid ~115 sequential HTTP round-trips at boot (`backend/suryakavach/db.py:190-201`).
 - Offline/dev: SQLite via Python's stdlib `sqlite3` at `<data.cache_path>/suryakavach.sqlite` (default `./data/suryakavach.sqlite`; file exists at both `data/` and `backend/data/`). Concurrency handled by `_LockedConnection` with a re-entrant lock and `check_same_thread=False` (`backend/suryakavach/db.py:62-126`).
 

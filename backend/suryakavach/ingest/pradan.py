@@ -96,12 +96,15 @@ def load_real_day_files(day: str, src_dir: str | os.PathLike | None = None) -> d
     else:
         t0 = d
 
+    sxr_mask = np.isfinite(sxr) if sxr is not None else np.zeros(24 * 60, dtype=bool)
+    hxr_mask = np.isfinite(hxr) if hxr is not None else np.zeros(24 * 60, dtype=bool)
+    quality = (sxr_mask & hxr_mask).astype(np.int8)
+
     if sxr is None:
         sxr = np.full(24 * 60, 6e-8, dtype=np.float64)
     if hxr is None:
         hxr = np.full(24 * 60, 4e-10, dtype=np.float64)
 
-    quality = (np.isfinite(sxr) & np.isfinite(hxr)).astype(np.int8)
     sxr = _ffill(sxr, 6e-8)
     hxr = _ffill(hxr, 4e-10)
 

@@ -17,7 +17,7 @@ SURYAKAVACH is an indigenous solar flare nowcasting, forecasting, and radiation 
    ```
 3. Run backend API:
    ```bash
-   uvicorn suryakavach.api:app --host 0.0.0.0 --port 8000 --reload
+   uvicorn suryakavach.api:app --host 127.0.0.1 --port 8000 --reload
    ```
 
 ### Frontend Setup

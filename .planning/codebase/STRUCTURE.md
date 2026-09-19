@@ -22,18 +22,40 @@ suryakavach/
 │   │   │   ├── forecast.py         # rolling_features + DiscreteHazard
 │   │   │   ├── evt.py              # GPD intensity quantiles
 │   │   │   └── impact.py           # Impact index + severity banding
-│   │   └── ingest/                 # Data ingestion adapters
+│   │   ├── evaluation/             # Evaluation metrics calculations, bootstrapping, Brier scores
+│   │   ├── models/                 # PyTorch survival model architecture, dataset, training & inference
+│   │   └── ingest/                 # Data ingestion & feature store adapters
 │   │       ├── synthetic.py        # Deterministic synthetic day generator
-│   │       └── pradan.py           # Real PRADAN product-file loader
-│   ├── tests/                      # pytest suite
+│   │       ├── pradan.py           # Real PRADAN product-file loader
+│   │       ├── pradan_session.py   # Authenticated ISSDC Keycloak session manager
+│   │       ├── pradan_catalogue.py # Catalogue parsing & atomic product downloader
+│   │       ├── registry.py         # Observed product SQLite database registry
+│   │       ├── fits_products.py    # FITS light-curve & image product readers
+│   │       ├── magnetometer.py    # MAG Level-2 NetCDF4 reader
+│   │       ├── fusion.py           # Unit-aware one-minute grid alignment
+│   │       ├── features.py         # Multi-instrument feature generation
+│   │       └── feature_store.py    # Atomic Parquet partition persistence
+│   ├── tests/                      # pytest suite (48 tests)
 │   │   ├── conftest.py             # Session TestClient running lifespan
 │   │   ├── test_api.py             # Route/contract tests
-│   │   └── test_engines.py         # Engine unit tests
-│   ├── data/                       # Dev SQLite cache (suryakavach.sqlite)
+│   │   ├── test_engines.py         # Scientific engine unit tests
+│   │   ├── test_evaluation.py      # Evaluation & metrics tests
+│   │   ├── test_feature_store.py   # Feature store persistence tests
+│   │   ├── test_features.py        # Feature extractor unit tests
+│   │   ├── test_fits_products.py   # FITS reader unit tests
+│   │   ├── test_fusion.py          # Fusion grid alignment tests
+│   │   ├── test_ingest_cli.py      # Ingest CLI contract tests
+│   │   ├── test_magnetometer.py    # Magnetometer NetCDF4 tests
+│   │   ├── test_models.py          # PyTorch survival model tests
+│   │   ├── test_pradan_catalogue.py# Catalogue parser & downloader tests
+│   │   ├── test_pradan_session.py  # Session authentication tests
+│   │   ├── test_registry.py       # Product registry tests
+│   │   └── test_splits.py         # Split manifest validation tests
+│   ├── data/                       # Dev SQLite cache (suryakavach.sqlite) & Parquet feature store
 │   ├── reports/                    # Generated metrics.md
 │   ├── Dockerfile                  # python:3.11-slim + uvicorn
 │   ├── requirements.txt            # Pinned deps
-│   └── pyproject.toml              # pytest config (pythonpath=["."], testpaths=["tests"])
+│   └── pyproject.toml              # pytest & ruff config
 ├── apps/
 │   └── web/                        # React 18 + Vite operator console
 │       ├── src/

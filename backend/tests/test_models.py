@@ -23,10 +23,10 @@ def _can_import_torch() -> bool:
         return False
 
 
-if not _can_import_torch():
-    pytest.skip("PyTorch is not importable without C exception", allow_module_level=True)
-
-import torch
+try:
+    import torch
+except (ImportError, OSError):
+    pytest.skip("PyTorch DLL dependencies are not loadable on this host", allow_module_level=True)
 
 
 

@@ -88,7 +88,7 @@ async def _br(_req, exc: BadRequest):
 
 Route bodies validate inputs and `raise BadRequest(...)` for domain 400s (`backend/suryakavach/api.py:262`, `:267`, `:328`). Pydantic `Field(ge=..., le=...)` constraints produce automatic 422s.
 
-**Defensive fallback pattern (ingest):** the PRADAN adapter raises typed errors instead of tracebacks, and callers fall back rather than crash:
+**Defensive fallback pattern (ingest):** the PRADAN adapter modules raise typed errors (`PradanUnavailable`, `PradanAuthenticationError`) instead of unhandled tracebacks, and callers fall back gracefully:
 
 ```python
 class PradanUnavailable(RuntimeError):

@@ -13,6 +13,7 @@ def test_split_manifest_requires_calibrated_and_date_disjoint_data(tmp_path):
         "id": "observed-v1",
         "source_state": "observed_calibrated",
         "label_source": "authoritative-event-catalogue-v1",
+        "created_at": "2026-09-19T00:00:00Z",
         "data_hashes": ["abc"],
         "splits": {
             "train": ["2024-01-01"],

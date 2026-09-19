@@ -60,7 +60,7 @@ export default function ImpactGauge({ impact }: ImpactGaugeProps) {
   const currentBand = scale?.bands.find((band) => band.r_level === rLvl);
   const color = index !== null ? (currentBand?.color ?? rLevelColor(rLvl)) : 'var(--color-ink-faint)';
   const hasData = index !== null;
-  const subscores = Object.entries(scale?.weights ?? impact?.weights_used ?? {});
+  const subscores = Object.entries({ ...(impact?.weights_used ?? {}), ...(scale?.weights ?? {}) });
 
   return (
     <Panel

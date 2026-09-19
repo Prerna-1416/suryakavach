@@ -11,8 +11,11 @@ from suryakavach.models.infer import PyTorchSurvivalPredictor
 class ModelRegistry:
     """Registry managing model selection, schema checking, and fallback resolution."""
 
-    @staticmethod
-    def get_provider(cfg: dict[str, Any] | None = None) -> Any:
+    _cached_predictor: PyTorchSurvivalPredictor | None = None
+    _cached_model_dir: Path | None = None
+
+    @classmethod
+    def get_provider(cls, cfg: dict[str, Any] | None = None) -> Any:
         cfg = cfg or load_config()
         model_cfg = cfg.get("model", {})
         provider_type = model_cfg.get("provider", "auto")
@@ -24,8 +27,13 @@ class ModelRegistry:
         cache_p = Path(cfg.get("data", {}).get("cache_path", "./data"))
         model_dir = cache_p / "models"
 
+        if cls._cached_predictor is not None and cls._cached_model_dir == model_dir:
+            return cls._cached_predictor
+
         predictor = PyTorchSurvivalPredictor()
         if model_dir.exists() and predictor.load(model_dir):
+            cls._cached_predictor = predictor
+            cls._cached_model_dir = model_dir
             return predictor
 
         return DiscreteHazard()

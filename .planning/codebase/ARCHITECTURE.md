@@ -39,9 +39,15 @@ SURYAKAVACH is a solar-flare nowcast / forecast / impact prototype for Aditya-L1
             ▲                     └─────────────────────────────────┘
             │ day dict {"ts","solexs","hel1os","quality","t0"}
 ┌───────────┴────────────────────────────────────────────────────────┐
-│  Ingestion                                                         │
-│  `backend/suryakavach/ingest/synthetic.py`  offline fallback       │
-│  `backend/suryakavach/ingest/pradan.py`     real PRADAN product files│
+│  Ingestion & Feature Store                                         │
+│  `backend/suryakavach/ingest/synthetic.py`  synthetic generator    │
+│  `backend/suryakavach/ingest/pradan_session.py` Keycloak auth      │
+│  `backend/suryakavach/ingest/pradan_catalogue.py` catalogue/down   │
+│  `backend/suryakavach/ingest/registry.py`   raw products DB        │
+│  `backend/suryakavach/ingest/fits_products.py` FITS readers       │
+│  `backend/suryakavach/ingest/magnetometer.py` MAG NetCDF4 reader   │
+│  `backend/suryakavach/ingest/fusion.py`     minute alignment       │
+│  `backend/suryakavach/ingest/feature_store.py` Parquet partition   │
 └────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -212,7 +218,7 @@ SURYAKAVACH is a solar-flare nowcast / forecast / impact prototype for Aditya-L1
 
 - **Threading:** one `Runtime` shared between the asyncio event loop and FastAPI's threadpool. Engine work is CPU-bound and dispatched via `asyncio.to_thread` (`api.py:121`, `api.py:201`). All runtime state mutation is guarded by `Runtime.lock` (`threading.RLock`); DB access is guarded by the connection's own `RLock`.
 - **Global state:** `runtime` singleton (`runtime.py:842`); `api._buckets` rate-limit map (`api.py:30`); `supabase_db._client` lazy client (`supabase_db.py:8`); `lib/router.ts` installs a `popstate` listener at module load.
-- **Spotify-style singleton import:** importing `runtime.py` is side-effect-free (`Runtime(boot=False)`) so tests can import the API without booting; boot happens only in the lifespan.
+- **Spotify-style singleton import:** importing `runtime.py` instantiates `Runtime(boot=False)`, which resolves configuration and initializes SQLite tables without fitting forecast models or running heavy data loading; full boot happens during the FastAPI lifespan.
 - **Determinism:** replay must be reproducible — synthetic data is seeded (`config.data.seed`), `DiscreteHazard.__init__` seeds numpy with 7.
 - **Causality:** no API response may expose post-cursor information; reads use `_nowcast_until` and the `prefix=True` recomputation path.
 - **Circular imports:** none observed; `pradan._default_real_dir` imports `config` lazily inside the function to avoid an ingest→config→ingest cycle.

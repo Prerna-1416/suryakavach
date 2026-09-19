@@ -122,7 +122,7 @@
 - Files: `backend/suryakavach/ingest/pradan.py` (modified in the working tree), `backend/suryakavach/runtime.py:122-138`
 - Why fragile: The module is split across three risk surfaces at once — untrusted CSV parsing (above), a silent fallback path, and a file-format claim (FITS) that the code does not honour. `_build_preferred_days` catches only three exception types, so a `TypeError` from the parser escapes into `Runtime.boot`, whose `except Exception` re-raises after setting `engine_status` to `"error"` (`runtime.py:109-112`). `boot` is awaited during the FastAPI lifespan (`api.py:121`), so one malformed real-day file takes the whole process down instead of degrading to synthetic.
 - Safe modification: When changing the parser, keep the "return `None` for a bad row" contract rather than raising, and add a test with a malformed CSV (extra columns, `None` cells, bad timestamp) plus a FITS-only directory.
-- Test coverage: None. `grep -rn "pradan" backend/tests` returns no matches.
+- Test coverage: Partial. PRADAN catalogue parsing (`test_pradan_catalogue.py`), authenticated sessions (`test_pradan_session.py`), product registry (`test_registry.py`), and FITS/NetCDF product readers (`test_fits_products.py`, `test_magnetometer.py`) are fully tested; legacy `pradan.py` fallback paths remain covered by `test_engines.py`.
 
 **BOCPD's new finiteness guard converts a silent bug into a hard boot failure (uncommitted work-in-progress):**
 - Files: `backend/suryakavach/engines/bocpd.py:44-47, 79-89` (modified in the working tree)

@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 import json
+import os
 from pathlib import Path
+import shutil
 from typing import Any
 
 import numpy as np
@@ -81,12 +83,24 @@ def write_minute_grid(
     }
     manifest_bytes = (json.dumps(manifest, indent=2, sort_keys=True) + "\n").encode("utf-8")
 
-    partition.mkdir(parents=True, exist_ok=False)
-    data_path = partition / "channels.parquet"
-    manifest_path = partition / "manifest.json"
-    pq.write_table(table, data_path)
-    manifest_path.write_bytes(manifest_bytes)
-    return data_path
+    partition.parent.mkdir(parents=True, exist_ok=True)
+    temp_partition = partition.with_name(f"{partition.name}.tmp_{os.getpid()}_{datetime.now(UTC).strftime('%H%M%S%f')}")
+    if temp_partition.exists():
+        shutil.rmtree(temp_partition, ignore_errors=True)
+    temp_partition.mkdir(parents=True, exist_ok=False)
+
+    try:
+        temp_data_path = temp_partition / "channels.parquet"
+        temp_manifest_path = temp_partition / "manifest.json"
+        pq.write_table(table, temp_data_path)
+        temp_manifest_path.write_bytes(manifest_bytes)
+        temp_partition.replace(partition)
+    except Exception:
+        if temp_partition.exists():
+            shutil.rmtree(temp_partition, ignore_errors=True)
+        raise
+
+    return partition / "channels.parquet"
 
 
 

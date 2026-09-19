@@ -6,7 +6,7 @@
 //   npm run dev        -> backend on :8000 + web on :5173
 //   npm run dev:web    -> frontend only
 //   npm run dev:api    -> backend only
-import { spawn } from 'node:child_process';
+import { spawn, execSync } from 'node:child_process';
 import net from 'node:net';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -24,7 +24,13 @@ function shutdown(sig, exitCode = 0) {
   shuttingDown = true;
   console.log(`\n${sig} received — stopping Suryakavach processes.`);
   for (const pid of procs) {
-    try { pid.kill('SIGTERM'); } catch {}
+    try {
+      if (isWindows && pid.pid) {
+        execSync(`taskkill /F /T /PID ${pid.pid}`, { stdio: 'ignore' });
+      } else {
+        pid.kill('SIGTERM');
+      }
+    } catch {}
   }
   if (exitCode !== 0) {
     process.exit(exitCode);
@@ -35,7 +41,7 @@ function shutdown(sig, exitCode = 0) {
 
 process.on('SIGINT', () => shutdown('Ctrl+C (SIGINT)', 0));
 process.on('SIGTERM', () => shutdown('SIGTERM', 0));
-process.on('exit', () => { for (const pid of procs) { try { pid.kill('SIGKILL'); } catch {} } });
+process.on('exit', () => { for (const pid of procs) { try { if (isWindows && pid.pid) { execSync(`taskkill /F /T /PID ${pid.pid}`, { stdio: 'ignore' }); } else { pid.kill('SIGKILL'); } } catch {} } });
 
 function isListening(port) {
   return new Promise((resolve) => {
@@ -61,23 +67,27 @@ async function checkApiHealth() {
 
 async function waitForApi(backendProc, timeoutMs) {
   const deadline = Date.now() + timeoutMs;
-  let exited = false;
+  let failedOrExited = false;
   
-  const onExit = () => { exited = true; };
-  backendProc.once('exit', onExit);
+  const onCleanup = () => { failedOrExited = true; };
+  backendProc.once('exit', onCleanup);
+  backendProc.once('error', onCleanup);
 
   while (Date.now() < deadline) {
-    if (exited) {
-      backendProc.off('exit', onExit);
+    if (failedOrExited) {
+      backendProc.off('exit', onCleanup);
+      backendProc.off('error', onCleanup);
       return false;
     }
     if (await checkApiHealth()) {
-      backendProc.off('exit', onExit);
+      backendProc.off('exit', onCleanup);
+      backendProc.off('error', onCleanup);
       return true;
     }
     await new Promise((res) => setTimeout(res, 800));
   }
-  backendProc.off('exit', onExit);
+  backendProc.off('exit', onCleanup);
+  backendProc.off('error', onCleanup);
   return false;
 }
 

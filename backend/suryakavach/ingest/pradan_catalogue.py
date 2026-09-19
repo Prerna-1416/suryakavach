@@ -149,12 +149,21 @@ def download_product(session: PradanSession, product: PradanProduct, destination
                 fh.write(chunk)
                 digest.update(chunk)
                 byte_count += len(chunk)
+
+    sha256_val = digest.hexdigest()
+    if target.exists():
+        existing_sha = hashlib.sha256(target.read_bytes()).hexdigest()
+        if existing_sha != sha256_val:
+            partial.unlink()
+            raise RuntimeError(
+                f"Downloaded product content hash {sha256_val} conflicts with existing target file {target.name} hash {existing_sha}"
+            )
     partial.replace(target)
     return {
         "payload": product.payload,
         "filename": target.name,
         "source_url": _without_query(product.download_url),
-        "sha256": digest.hexdigest(),
+        "sha256": sha256_val,
         "bytes": byte_count,
         "observation_start": product.observation_start or "",
         "observation_end": product.observation_end or "",

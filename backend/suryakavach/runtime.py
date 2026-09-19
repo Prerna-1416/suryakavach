@@ -12,6 +12,7 @@ import numpy as np
 
 from suryakavach.config import data_dir, load_config
 from suryakavach.db import connect
+from suryakavach.engines.calibration import FluxCalibration
 from suryakavach.engines.evt import intensity_quantiles
 from suryakavach.engines.forecast import DiscreteHazard, rolling_features
 from suryakavach.engines.impact import compute_impact, map_severity
@@ -23,8 +24,8 @@ from suryakavach.ingest.synthetic import build_all_days
 UTC = timezone.utc
 
 
-def _ffill(x: np.ndarray) -> np.ndarray:
-    """Forward-fill non-finite samples, seeding from the finite-series median.
+def _ffill(x: np.ndarray, default: float = 1e-12) -> np.ndarray:
+    """Forward-fill non-finite samples, seeding from a fixed finite floor.
 
     Real product files can contain both missing values and overflow sentinels.
     An all-non-finite input would otherwise propagate NaN/inf through the
@@ -36,8 +37,8 @@ def _ffill(x: np.ndarray) -> np.ndarray:
         return y
     finite = np.isfinite(y)
     if not np.any(finite):
-        return np.full_like(y, 1e-12)
-    last = float(np.median(y[finite]))
+        return np.full_like(y, default)
+    last = default
     for i in range(len(y)):
         if not np.isfinite(y[i]):
             y[i] = last
@@ -148,9 +149,37 @@ class Runtime:
                 continue
             if not real_day.get("truth"):
                 continue
-            real_day["source_state"] = "observed_calibrated"
-            real_day["provenance"] = {"source": "real_days", "calibration": "configured"}
-            days[day] = real_day
+
+            cal_file = src_dir / "calibration.json"
+            if not cal_file.exists():
+                cal_file = self.data_path / "calibration.json"
+            if cal_file.exists():
+                try:
+                    cal_data = json.loads(cal_file.read_text(encoding="utf-8"))
+                    cal = FluxCalibration(
+                        calibration_id=cal_data["calibration_id"],
+                        intercept=float(cal_data["intercept"]),
+                        slope=float(cal_data["slope"]),
+                        rmse_log10=float(cal_data.get("rmse_log10", 0.1)),
+                        sample_count=int(cal_data.get("sample_count", 100)),
+                        dataset_provenance=str(cal_data.get("dataset_provenance", "reference_goes_xrs")),
+                    )
+                    real_day["solexs"] = cal.apply(real_day["solexs"])
+                    real_day["source_state"] = "observed_calibrated"
+                    real_day["provenance"] = {
+                        "source": "real_days",
+                        "calibration_id": cal.calibration_id,
+                        "calibration": cal.metadata(),
+                    }
+                    days[day] = real_day
+                except Exception:
+                    real_day["source_state"] = "observed_uncalibrated"
+                    real_day["provenance"] = {"source": "real_days", "calibration": "invalid"}
+                    days[day] = real_day
+            else:
+                real_day["source_state"] = "observed_uncalibrated"
+                real_day["provenance"] = {"source": "real_days", "calibration": "missing"}
+                days[day] = real_day
         return days
 
     def _fit_forecast(self) -> None:

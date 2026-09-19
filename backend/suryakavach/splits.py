@@ -19,6 +19,7 @@ class SplitManifest:
     id: str
     source_state: str
     label_source: str
+    created_at: str
     data_hashes: tuple[str, ...]
     splits: dict[str, tuple[str, ...]]
 
@@ -50,10 +51,26 @@ def load_split_manifest(path: str | Path) -> SplitManifest:
     label_source = str(raw.get("label_source", ""))
     if not identifier or not label_source:
         raise ValueError("split manifest requires id and label_source")
+
+    data_hashes = tuple(str(value) for value in raw.get("data_hashes", []))
+    if not data_hashes:
+        raise ValueError("split manifest requires at least one data hash in data_hashes")
+
+    created_at_raw = str(raw.get("created_at", ""))
+    if not created_at_raw:
+        raise ValueError("split manifest requires a timezone-aware created_at timestamp")
+    try:
+        created_dt = datetime.datetime.fromisoformat(created_at_raw)
+        if created_dt.tzinfo is None:
+            raise ValueError("created_at timestamp must be timezone-aware")
+    except Exception as exc:
+        raise ValueError(f"split manifest requires a valid timezone-aware created_at timestamp: {exc}")
+
     return SplitManifest(
         id=identifier,
         source_state=source_state,
         label_source=label_source,
-        data_hashes=tuple(str(value) for value in raw.get("data_hashes", [])),
+        created_at=created_at_raw,
+        data_hashes=data_hashes,
         splits=split_values,
     )

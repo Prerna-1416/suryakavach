@@ -22,19 +22,24 @@ dashboard, and production-readiness work without overstating operational skill.
 
 ### Implemented in the active working tree
 
-- Dynamic authenticated PRADAN/ISSDC Keycloak session:
-  `backend/suryakavach/ingest/pradan_session.py`.
-- PRADAN catalogue parsing plus atomic product downloader and SHA-256 manifest:
-  `backend/suryakavach/ingest/pradan_catalogue.py`.
-- Real SoLEXS FITS light-curve reader:
-  `backend/suryakavach/ingest/fits_products.py`.
+- Dynamic authenticated PRADAN/ISSDC Keycloak session with host validation:
+  [`backend/suryakavach/ingest/pradan_session.py`](file:///c:/Users/King/suryakavach/backend/suryakavach/ingest/pradan_session.py) (`test_pradan_session.py`).
+- PRADAN catalogue parsing plus atomic product downloader and target SHA-256 validation:
+  [`backend/suryakavach/ingest/pradan_catalogue.py`](file:///c:/Users/King/suryakavach/backend/suryakavach/ingest/pradan_catalogue.py) (`test_pradan_catalogue.py`).
+- Hash-verified SQLite raw product registry:
+  [`backend/suryakavach/ingest/registry.py`](file:///c:/Users/King/suryakavach/backend/suryakavach/ingest/registry.py) (`test_registry.py`).
+- Real SoLEXS FITS light-curve and HEL1OS energy-band reader:
+  [`backend/suryakavach/ingest/fits_products.py`](file:///c:/Users/King/suryakavach/backend/suryakavach/ingest/fits_products.py) (`test_fits_products.py`).
 - Real MAG Level-2 NetCDF4 reader:
-  `backend/suryakavach/ingest/magnetometer.py`.
-- Unit-aware one-minute alignment contract:
-  `backend/suryakavach/ingest/fusion.py`.
-- One verified SoLEXS L1 archive and MAG L2 file live under ignored
-  `data/raw/pradan/`, each with a JSON SHA-256 manifest.
-- Backend test suite passes at the time of this plan: 27 tests.
+  [`backend/suryakavach/ingest/magnetometer.py`](file:///c:/Users/King/suryakavach/backend/suryakavach/ingest/magnetometer.py) (`test_magnetometer.py`).
+- Unit-aware one-minute alignment & feature store:
+  [`backend/suryakavach/ingest/fusion.py`](file:///c:/Users/King/suryakavach/backend/suryakavach/ingest/fusion.py), [`backend/suryakavach/ingest/feature_store.py`](file:///c:/Users/King/suryakavach/backend/suryakavach/ingest/feature_store.py) (`test_fusion.py`, `test_feature_store.py`).
+- PyTorch discrete-time survival model runtime with DiscreteHazard fallback and cached provider:
+  [`backend/suryakavach/models/`](file:///c:/Users/King/suryakavach/backend/suryakavach/models/) (`test_models.py`).
+- Offline evaluation engine, metrics serialization, and database persistence (`evaluation_runs`):
+  [`backend/suryakavach/evaluate.py`](file:///c:/Users/King/suryakavach/backend/suryakavach/evaluate.py), [`backend/suryakavach/evaluation/`](file:///c:/Users/King/suryakavach/backend/suryakavach/evaluation/) (`test_evaluation.py`).
+- GitHub Actions CI workflow ([`.github/workflows/ci.yml`](file:///c:/Users/King/suryakavach/.github/workflows/ci.yml)) & Operator Runbook ([`docs/runbook.md`](file:///c:/Users/King/suryakavach/docs/runbook.md)).
+- Backend test suite passes: 48 tests.
 
 ### Current real-product facts
 

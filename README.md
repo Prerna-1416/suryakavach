@@ -11,9 +11,9 @@ SURYAKAVACH turns Aditya-L1 SoLEXS, HEL1OS, SUIT, and MAG observations into thre
 
 The product is designed as a calm, light-theme mission-operations console backed by a FastAPI service, reproducible offline replay, and interpretable detection, forecasting, and impact engines.
 
-> **Project status — Production-Ready Prototype & Verified Operational Platform**
+> **Project status — Operational Prototype & Verified Early-Warning Platform**
 >
-> The repository contains a complete, fully tested implementation of the SURYAKAVACH operational solar-flare early-warning platform. It includes authentic Aditya-L1 PRADAN payload ingestion (SoLEXS, MAG, HEL1OS, SUIT) with a hash-verified SQLite product registry, unit-aware 1-minute feature store, PyTorch discrete-time survival forecasting with graceful baseline fallback, calibration engines, live metrics API & evaluation panel, GitHub Actions CI workflow, and an operator runbook.
+> The repository contains a fully verified v1 prototype implementation of the SURYAKAVACH solar-flare early-warning platform. It includes authentic Aditya-L1 PRADAN payload ingestion (SoLEXS, MAG) alongside HEL1OS/SUIT catalogue indexing, a hash-verified SQLite product registry, unit-aware 1-minute feature store, PyTorch discrete-time survival forecasting with graceful baseline fallback, calibration engines, live metrics API & evaluation panel, GitHub Actions CI workflow, and an operator runbook.
 
 ## Product scope
 

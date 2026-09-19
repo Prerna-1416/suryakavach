@@ -10,7 +10,16 @@ from pathlib import Path
 import sqlite3
 from typing import Any
 
+from urllib.parse import urlparse
+
 UTC = timezone.utc
+
+def _validate_source_url(url: str) -> None:
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https") or not parsed.netloc:
+        raise ValueError(f"Invalid product source_url scheme/netloc: '{url}'")
+    if parsed.query or parsed.fragment or parsed.username or parsed.password:
+        raise ValueError(f"product source_url must not contain query parameters, fragments, or user info: '{url}'")
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS observed_products (
@@ -74,6 +83,7 @@ class ObservedProductRegistry:
 
     def register(self, product: ObservedProduct, verify: bool = True) -> None:
         """Upsert one product after optionally verifying its immutable file hash."""
+        _validate_source_url(product.source_url)
         path = Path(product.local_path)
         if verify:
             if not path.is_file():

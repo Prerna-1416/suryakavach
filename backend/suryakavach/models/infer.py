@@ -69,7 +69,7 @@ class PyTorchSurvivalPredictor:
             # compatibility with older PyTorch releases.
             load_kwargs: dict[str, Any] = {"map_location": "cpu"}
             if "weights_only" in inspect.signature(torch.load).parameters:
-                load_kwargs["weights_only"] = False
+                load_kwargs["weights_only"] = True
             ckpt = torch.load(ckpt_path, **load_kwargs)
             self.seq_len = ckpt.get("seq_len", 60)
             self.max_horizon = ckpt.get("max_horizon", 40)

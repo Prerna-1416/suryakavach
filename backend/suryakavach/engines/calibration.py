@@ -19,21 +19,36 @@ class FluxCalibration:
     slope: float
     rmse_log10: float
     sample_count: int
+    dataset_provenance: str = "reference_goes_xrs"
+    approved_min_count: float = 1.0
+    approved_max_count: float = 1e8
+    valid_start_iso: str | None = None
+    valid_end_iso: str | None = None
 
     def apply(self, counts: np.ndarray | list[float]) -> np.ndarray:
         values = np.asarray(counts, dtype=float)
         result = np.full(values.shape, np.nan, dtype=float)
-        usable = np.isfinite(values) & (values > 0)
+        usable = (
+            np.isfinite(values)
+            & (values > 0)
+            & (values >= self.approved_min_count)
+            & (values <= self.approved_max_count)
+        )
         result[usable] = np.power(10.0, self.intercept + self.slope * np.log10(values[usable]))
         return result
 
-    def metadata(self) -> dict[str, float | int | str]:
+    def metadata(self) -> dict[str, float | int | str | None]:
         return {
             "calibration_id": self.calibration_id,
             "intercept": self.intercept,
             "slope": self.slope,
             "rmse_log10": self.rmse_log10,
             "sample_count": self.sample_count,
+            "dataset_provenance": self.dataset_provenance,
+            "approved_min_count": self.approved_min_count,
+            "approved_max_count": self.approved_max_count,
+            "valid_start_iso": self.valid_start_iso,
+            "valid_end_iso": self.valid_end_iso,
             "input_unit": "counts",
             "output_unit": "W/m2",
         }

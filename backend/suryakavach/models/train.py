@@ -74,7 +74,7 @@ def train_survival_model(
         torch.tensor(train_batch.m_event, dtype=torch.float32),
         torch.tensor(train_batch.m_time, dtype=torch.long),
     )
-    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, generator=gen)
+    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, generator=gen, drop_last=True)
 
     val_ds = TensorDataset(
         torch.tensor(norm_val_seqs, dtype=torch.float32),

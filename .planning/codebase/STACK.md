@@ -21,7 +21,7 @@
 **Package Manager:**
 - npm - Two manifests: root workspace `package.json` (dev-orchestration only, no dependencies) and `apps/web/package.json`.
   - Lockfile: present at `apps/web/package-lock.json`. Root `package-lock.json` exists but is an empty stub (`"packages": {}`).
-- pip - `backend/requirements.txt` pins every dependency exactly. No `poetry.lock`/`uv.lock`; `backend/pyproject.toml` holds only pytest config.
+- pip - `backend/requirements.txt` pins every dependency exactly. No `poetry.lock`/`uv.lock`; `backend/pyproject.toml` holds both pytest configuration and `[tool.ruff]` lint settings.
   - Lockfile: missing (requirements are version-pinned instead).
 
 ## Frameworks
@@ -29,6 +29,7 @@
 **Core:**
 - FastAPI 0.115.6 - Backend HTTP API and WebSocket endpoint. App defined in `backend/suryakavach/api.py`; routes under `/api/*` and `WS /ws/live`.
 - Uvicorn 0.34.0 (`[standard]`) - ASGI server. Bound to `127.0.0.1:8000` in dev (`scripts/dev.mjs`), `0.0.0.0:8000` in the container.
+- PyTorch (torch >= 2.0.0) - Deep discrete-time survival model forecasting in `backend/suryakavach/models/` with CPU runtime expectations and `DiscreteHazard` baseline fallback.
 - Pydantic 2.10.4 - Request models and validation (`ReplayStart`, `ReplayControl`, `CursorSet` in `backend/suryakavach/api.py`).
 - React 18.3.1 + react-dom 18.3.1 - Frontend UI. Entry `apps/web/src/main.tsx`, root `apps/web/src/App.tsx`.
 - Vite 7.3.6 - Dev server and bundler. Config `apps/web/vite.config.ts` (port 5173, `@` → `./src` alias, manual chunks for plotly/motion/vendor, `chunkSizeWarningLimit: 1200`).

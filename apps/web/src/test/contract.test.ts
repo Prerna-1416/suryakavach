@@ -444,6 +444,18 @@ const ConfidenceIntervalSchema = z.object({
   confidence_level: z.number(),
 });
 
+const FailureSliceMetricsSchema = z.object({
+  slice_name: z.string(),
+  sample_count: z.number(),
+  tp: z.number(),
+  fp: z.number(),
+  fn: z.number(),
+  tn: z.number(),
+  tss: z.number(),
+  hss: z.number(),
+  far: z.number(),
+});
+
 const EvaluationRunSchema = z.object({
   id: z.string(),
   created_at: z.string(),
@@ -458,8 +470,9 @@ const EvaluationRunSchema = z.object({
   horizon_brier_scores: z.record(z.string(), z.number()),
   confidence_intervals: z.record(z.string(), ConfidenceIntervalSchema),
   calibration_curve: CalibrationCurveSchema,
+  failure_slices: z.record(z.string(), FailureSliceMetricsSchema),
   sample_count: z.number(),
-  age_seconds: z.number().optional(),
+  age_seconds: z.number(),
 });
 
 describe('EvaluationRun contract', () => {
@@ -489,6 +502,9 @@ describe('EvaluationRun contract', () => {
         points: [{ bin_center: 0.05, prob_pred: 0.0043, prob_true: 0.0523, count: 15637 }],
         brier_score: 0.0578,
         brier_skill_score: -0.0464
+      },
+      failure_slices: {
+        m_class_plus: { slice_name: 'm_class_plus', sample_count: 11, tp: 10, fp: 2, fn: 1, tn: 48, tss: 0.8, hss: 0.7, far: 0.167 }
       },
       sample_count: 11,
       age_seconds: 120
