@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import inspect
 import json
 import logging
 from pathlib import Path
@@ -61,7 +62,15 @@ class PyTorchSurvivalPredictor:
                 self.is_loaded = False
                 return False
 
-            ckpt = torch.load(ckpt_path, map_location="cpu")
+            # PyTorch 2.6 changed the default for weights_only to True.  This
+            # checkpoint is written by train_survival_model and contains the
+            # complete model metadata, so request the legacy behavior when the
+            # installed PyTorch exposes that option.  The signature check keeps
+            # compatibility with older PyTorch releases.
+            load_kwargs: dict[str, Any] = {"map_location": "cpu"}
+            if "weights_only" in inspect.signature(torch.load).parameters:
+                load_kwargs["weights_only"] = False
+            ckpt = torch.load(ckpt_path, **load_kwargs)
             self.seq_len = ckpt.get("seq_len", 60)
             self.max_horizon = ckpt.get("max_horizon", 40)
             num_features = ckpt.get("num_features", len(FEATURE_NAMES))
@@ -97,8 +106,12 @@ class PyTorchSurvivalPredictor:
             self.is_loaded = True
             return True
 
-        except Exception as err:
-            logger.warning("Error loading PyTorch survival model checkpoint: %s; falling back to baseline.", err)
+        except Exception:
+            logger.exception(
+                "Error loading PyTorch survival model checkpoint from %s; "
+                "falling back to baseline.",
+                ckpt_path,
+            )
             self.is_loaded = False
             return False
 
